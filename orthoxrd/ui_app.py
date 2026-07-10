@@ -25,7 +25,7 @@ VIEWS = ["Pattern", "Peaks", "F2 evolution", "Sweep", "Method"]
 
 def main() -> None:
     st.set_page_config(
-        page_title="Orthorhombic XRD Simulator",
+        page_title="CrystalShift XRD",
         page_icon=":material/science:",
         layout="wide",
         initial_sidebar_state="collapsed",
@@ -69,7 +69,7 @@ def _render_title_and_advanced():
         st.markdown(
             """
 <div class="xrd-titlebar">
-  <h1>Orthorhombic XRD Simulator</h1>
+  <h1>CrystalShift XRD</h1>
   <span class="xrd-model-tag">Cmcm 4c | schema 2.1</span>
 </div>
 <div class="xrd-subtitle">

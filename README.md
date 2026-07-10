@@ -1,6 +1,6 @@
-# Orthorhombic XRD Simulator
+# CrystalShift XRD
 
-Orthorhombic XRD Simulator is a Streamlit scientific workbench for theoretical powder XRD of an orthorhombic `Cmcm` phase with the `4c` Wyckoff position. It is designed for studying how lattice constants, Wyckoff `y`, basal shuffle, and incident X-ray energy or wavelength affect peak positions, structure factors, and calculated powder profiles.
+CrystalShift XRD is a Streamlit scientific workbench for theoretical powder XRD of an orthorhombic `Cmcm 4c` phase. It is designed for studying how lattice constants, Wyckoff `y`, basal shuffle, and incident X-ray energy or wavelength affect peak positions, structure factors, and calculated powder profiles.
 
 Version: `2.1.0`
 Export schema: `2.1`

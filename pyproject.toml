@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "orthorhombic-xrd-simulator"
 version = "2.1.0"
-description = "Scientific Streamlit workbench for Cmcm 4c orthorhombic powder XRD simulation"
+description = "CrystalShift XRD: scientific Streamlit workbench for Cmcm 4c powder XRD simulation"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
