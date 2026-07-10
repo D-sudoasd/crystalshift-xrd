@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyright/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# Frontend dependencies and local build outputs
+frontend/node_modules/
+frontend/dist/
+frontend/.cache/
+
+# Local app and browser tooling
+.playwright-cli/
+.streamlit/secrets.toml
+.env
+.env.*
+.omo/
+qa_evidence/
+
+# Generated archives and temporary exports
+*.zip
+*.tmp

@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "orthorhombic-xrd-simulator"
+version = "2.1.0"
+description = "Scientific Streamlit workbench for Cmcm 4c orthorhombic powder XRD simulation"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.26,<3",
+    "plotly>=5.20,<7",
+    "pymatgen>=2024.5",
+    "streamlit>=1.57,<2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "basedpyright>=1.30",
+    "pytest>=8",
+    "ruff>=0.9",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
+ignore = ["E741", "RUF001", "RUF002", "RUF003"]
+
+[tool.basedpyright]
+include = ["orthoxrd", "app.py"]
+pythonVersion = "3.11"
+typeCheckingMode = "standard"
+reportMissingTypeStubs = false
+extraPaths = ["C:/Users/AORUS/AppData/Local/Programs/Python/Python311/Lib/site-packages"]
+exclude = ["**/__pycache__"]

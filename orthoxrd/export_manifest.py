@@ -1,0 +1,157 @@
+from __future__ import annotations
+
+import hashlib
+import json
+from datetime import UTC, datetime
+
+from orthoxrd import __version__
+from orthoxrd.batch_models import SweepResult
+from orthoxrd.config import SimulationConfig, config_json, config_payload
+from orthoxrd.export_rows import sweep_step_rows
+from orthoxrd.export_schema import PEAK_EVOLUTION_FIELDS, SPECTRA_LONG_FIELDS
+from orthoxrd.export_writer import ExportFileMeta
+
+
+def manifest_json(
+    digest: str,
+    files: dict[str, ExportFileMeta],
+    config: SimulationConfig,
+    export_kind: str,
+) -> str:
+    payload = {
+        "schema_version": "2.1",
+        "app_version": __version__,
+        "export_kind": export_kind,
+        "generated_at_utc": datetime.now(UTC).isoformat(),
+        "config_hash": digest,
+        "model": "orthorhombic alpha-double-prime Cmcm 4c",
+        "intensity": {
+            "I_model_peak": (
+                "F2 * applied_multiplicity * applied_LP * "
+                "applied_volume_factor * radiation_line_weight"
+            ),
+            "I_profile_model": "sum(I_model_peak * profile(two_theta-center))",
+            "I_rel_local": "100 * value / maximum within one step",
+            "I_rel_global": "100 * value / maximum across the sweep",
+            "I_raw": (
+                "legacy alias for calculated model peak intensity; not experimental raw data"
+            ),
+        },
+        "corrections": config_payload(config)["corrections"],
+        "normalization": {
+            "local": "each sweep step scaled to max 100",
+            "global": "all sweep steps scaled to the global maximum",
+        },
+        "compatibility": {
+            "legacy_headers_preserved": True,
+            "legacy_peak_fields": list(PEAK_EVOLUTION_FIELDS),
+            "legacy_spectra_fields": list(SPECTRA_LONG_FIELDS),
+            "byte_for_byte_compatible": False,
+            "numeric_tolerance": 1e-8,
+        },
+        "units": {
+            "lattice_and_d": "angstrom",
+            "q_and_s": "angstrom^-1",
+            "two_theta": "degree",
+            "energy": "keV",
+            "relative_intensity": "percent",
+            "model_intensity": "arbitrary calculated units",
+        },
+        "limits": [
+            "kinematic powder calculation",
+            "no texture or preferred orientation",
+            "no absorption or anomalous dispersion",
+            "no microstrain, domain size, zero shift, background, or absolute calibration",
+        ],
+        "files": {
+            name: {
+                "rows": metadata.rows,
+                "columns": metadata.columns,
+                "sha256": metadata.sha256,
+            }
+            for name, metadata in files.items()
+        },
+    }
+    return json.dumps(payload, ensure_ascii=True, indent=2, sort_keys=True) + chr(10)
+
+
+def sweep_config_json(result: SweepResult) -> str:
+    payload = {
+        "simulation": config_payload(result.base_config),
+        "steps": list(sweep_step_rows(result)),
+    }
+    return json.dumps(payload, ensure_ascii=True, indent=2, sort_keys=True) + chr(10)
+
+
+def sweep_hash(result: SweepResult) -> str:
+    payload = config_json(result.base_config) + json.dumps(
+        list(sweep_step_rows(result)),
+        ensure_ascii=True,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def current_readme() -> str:
+    return """# Current orthorhombic XRD simulation
+
+Files
+- spectrum.csv: profile on the common two-theta grid.
+- peaks.csv: Bragg reflections and complete model-intensity decomposition.
+- config.json: exact simulation inputs.
+- manifest.json: schema, formulas, units, limits, and checksums.
+
+Origin
+1. Import spectrum.csv as comma-delimited text with the first row as Long Name.
+2. Set two_theta_deg as X and intensity_rel_local or intensity_model as Y.
+3. Import peaks.csv separately for labels and reflection filtering.
+
+Python
+
+    import numpy as np
+    import matplotlib.pyplot as plt
+    data = np.genfromtxt("spectrum.csv", delimiter=",", names=True)
+    plt.plot(data["two_theta_deg"], data["intensity_rel_local"])
+    plt.xlabel("2theta (deg)")
+    plt.ylabel("Relative intensity (%)")
+    plt.show()
+"""
+
+
+def sweep_readme() -> str:
+    return """# Orthorhombic XRD sweep export
+
+Mapping
+- sweep_steps.csv maps stable step IDs to a, b, c, y, shuffle, and radiation.
+- series_map.csv maps stable series IDs to radiation line and HKL.
+- Long tables support filtering and tidy-data plotting.
+- Matrix tables are ready for Origin contour/heatmap workflows.
+
+Intensity
+- model is unnormalized calculated profile or peak intensity.
+- global uses one maximum for the sweep and preserves amplitude evolution.
+- local normalizes each step separately and is only for shape comparison.
+
+Origin heatmap
+1. Import spectra_matrix_global.csv.
+2. Set two_theta_deg as X and all step columns as Y data.
+3. Use Plot > Contour > Heat Map; map columns with sweep_steps.csv.
+
+Python heatmap
+
+    import numpy as np
+    import matplotlib.pyplot as plt
+    data = np.genfromtxt("spectra_matrix_global.csv", delimiter=",", names=True)
+    z = np.column_stack([data[name] for name in data.dtype.names[1:]]).T
+    plt.imshow(z, aspect="auto", origin="lower",
+               extent=[data["two_theta_deg"][0], data["two_theta_deg"][-1], 0, z.shape[0]])
+    plt.xlabel("2theta (deg)")
+    plt.ylabel("Sweep step")
+    plt.colorbar(label="Global relative intensity (%)")
+    plt.show()
+
+HKL evolution
+Import peak_evolution_long.csv and group by series_id, or use one of the
+peak_evolution_matrix files for direct multi-curve plotting.
+"""

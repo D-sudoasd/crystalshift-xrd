@@ -1,0 +1,225 @@
+import csv
+import hashlib
+import io
+import json
+import zipfile
+from pathlib import Path
+
+from orthoxrd.batch import SweepConfig, generate_sweep
+from orthoxrd.config import SimulationConfig
+from orthoxrd.export_zip import (
+    BATCH_EXPORT_FILES,
+    CURRENT_EXPORT_FILES,
+    build_current_zip,
+    build_sweep_zip,
+    cleanup_export,
+    prepare_sweep_export,
+)
+from orthoxrd.models import LatticeParameters, RadiationLine
+from orthoxrd.simulation import calculate_simulation
+from orthoxrd.ui_tables import PEAK_EVOLUTION_FIELDS, SPECTRA_LONG_FIELDS
+
+
+def _config() -> SimulationConfig:
+    return SimulationConfig(
+        lattice=LatticeParameters(a=3.222, b=4.759, c=4.668),
+        y=0.222,
+        lines=(RadiationLine("30 keV", 0.4132806614, 1.0),),
+        scattering_mode="unit",
+        composition=(),
+        two_theta_min=1.0,
+        two_theta_max=12.0,
+        hkl_max=3,
+        min_peak=0.0,
+        profile_kind="gaussian",
+        fwhm_deg=0.05,
+        pseudo_voigt_eta=0.5,
+        spectrum_points=101,
+        include_lorentz_polarization=False,
+        include_multiplicity=False,
+        include_cell_volume=False,
+    )
+
+
+def _sweep():
+    base = _config()
+    return generate_sweep(
+        SweepConfig.from_simulation(
+            base,
+            axis="y",
+            start=0.221,
+            stop=0.222,
+            step=0.001,
+        )
+    )
+
+
+def test_current_simulation_zip_has_analysis_ready_contract() -> None:
+    package = build_current_zip(calculate_simulation(_config()))
+
+    with zipfile.ZipFile(io.BytesIO(package)) as archive:
+        assert set(archive.namelist()) == set(CURRENT_EXPORT_FILES)
+        manifest = json.loads(archive.read("manifest.json"))
+        assert manifest["schema_version"] == "2.1"
+        assert {
+            "plot_state.json", "origin_column_map.csv", "origin_import.py", "ORIGIN_README.md"
+        } <= set(archive.namelist())
+        assert manifest["intensity"]["I_model_peak"].startswith("F2")
+        spectrum = list(csv.DictReader(io.StringIO(archive.read("spectrum.csv").decode("utf-8"))))
+        peaks = list(csv.DictReader(io.StringIO(archive.read("peaks.csv").decode("utf-8"))))
+
+    assert spectrum
+    assert {"q_primary_A_inv", "d_primary_A", "intensity_model"} <= set(spectrum[0])
+    assert peaks
+    assert {"F_real", "F_imag", "I_model_peak", "series_id"} <= set(peaks[0])
+
+
+def test_batch_zip_preserves_legacy_headers_and_adds_v2_files() -> None:
+    package = build_sweep_zip(_sweep())
+
+    with zipfile.ZipFile(io.BytesIO(package)) as archive:
+        assert set(archive.namelist()) == set(BATCH_EXPORT_FILES)
+        peak_reader = csv.reader(
+            io.StringIO(archive.read("peak_evolution_long.csv").decode("utf-8"))
+        )
+        spectra_reader = csv.reader(io.StringIO(archive.read("spectra_long.csv").decode("utf-8")))
+        peak_header = next(peak_reader)
+        spectra_header = next(spectra_reader)
+        manifest = json.loads(archive.read("manifest.json"))
+
+    assert peak_header[: len(PEAK_EVOLUTION_FIELDS)] == list(PEAK_EVOLUTION_FIELDS)
+    assert spectra_header[: len(SPECTRA_LONG_FIELDS)] == list(SPECTRA_LONG_FIELDS)
+    assert manifest["schema_version"] == "2.1"
+    assert manifest["compatibility"]["legacy_headers_preserved"] is True
+
+
+def test_sweep_zip_contains_origin_workflow_files() -> None:
+    package = build_sweep_zip(_sweep())
+
+    with zipfile.ZipFile(io.BytesIO(package)) as archive:
+        names = set(archive.namelist())
+        column_map = list(
+            csv.DictReader(io.StringIO(archive.read("origin_column_map.csv").decode("utf-8")))
+        )
+
+    assert {
+        "plot_state.json", "origin_column_map.csv", "origin_import.py", "ORIGIN_README.md"
+    } <= names
+    assert column_map
+    assert {"file", "column", "designation", "long_name", "unit", "comment"} == set(
+        column_map[0]
+    )
+
+
+def test_batch_manifest_checksums_match_every_non_manifest_file() -> None:
+    package = build_sweep_zip(_sweep())
+
+    with zipfile.ZipFile(io.BytesIO(package)) as archive:
+        manifest = json.loads(archive.read("manifest.json"))
+        for name, metadata in manifest["files"].items():
+            assert hashlib.sha256(archive.read(name)).hexdigest() == metadata["sha256"]
+            assert metadata["rows"] >= 0
+            assert metadata["columns"] >= 1
+
+
+def test_peak_evolution_matrices_use_stable_step_and_series_ids() -> None:
+    package = build_sweep_zip(_sweep())
+
+    with zipfile.ZipFile(io.BytesIO(package)) as archive:
+        matrix = list(
+            csv.DictReader(
+                io.StringIO(archive.read("peak_evolution_matrix_F2.csv").decode("utf-8"))
+            )
+        )
+        series_map = list(
+            csv.DictReader(io.StringIO(archive.read("series_map.csv").decode("utf-8")))
+        )
+
+    assert [row["step_id"] for row in matrix] == ["step_0000", "step_0001"]
+    assert series_map
+    assert all(row["series_id"].startswith("line_00__h") for row in series_map)
+
+
+def test_prepared_export_is_file_backed_and_cleanup_is_scoped() -> None:
+    prepared = prepare_sweep_export(_sweep())
+
+    assert Path(prepared.path).is_file()
+    assert prepared.size_bytes > 0
+    assert len(prepared.sha256) == 64
+
+    cleanup_export(prepared)
+    assert not Path(prepared.path).exists()
+
+
+def test_origin_script_compiles_and_map_covers_exported_data_csv() -> None:
+    package = build_sweep_zip(_sweep())
+
+    with zipfile.ZipFile(io.BytesIO(package)) as archive:
+        script = archive.read("origin_import.py").decode("utf-8")
+        mapped = {
+            row["file"]
+            for row in csv.DictReader(
+                io.StringIO(archive.read("origin_column_map.csv").decode("utf-8"))
+            )
+        }
+        data_csv = {
+            name
+            for name in archive.namelist()
+            if name.endswith(".csv") and name != "origin_column_map.csv"
+        }
+
+    compile(script, "origin_import.py", "exec")
+    assert data_csv <= mapped
+
+
+def test_plot_state_json_records_active_pattern_and_sweep_ranges() -> None:
+    from orthoxrd.export_origin import SweepExportPlotState
+    from orthoxrd.export_zip import prepare_current_export
+    from orthoxrd.ui_plot_state import PlotState
+
+    current = calculate_simulation(_config())
+    current_export = prepare_current_export(
+        current,
+        PlotState("q_primary", 1.5, 4.5, False, 2.0, 80.0),
+    )
+    sweep_export = prepare_sweep_export(
+        _sweep(),
+        SweepExportPlotState(2.0, 9.0, 0.2212, 0.2218),
+    )
+    try:
+        with zipfile.ZipFile(current_export.path) as archive:
+            current_state = json.loads(archive.read("plot_state.json"))
+        with zipfile.ZipFile(sweep_export.path) as archive:
+            sweep_state = json.loads(archive.read("plot_state.json"))
+    finally:
+        cleanup_export(current_export)
+        cleanup_export(sweep_export)
+
+    assert current_state["x_axis"] == "q_primary"
+    assert current_state["x_minimum"] == 1.5
+    assert current_state["y_auto"] is False
+    assert current_state["y_maximum"] == 80.0
+    assert sweep_state["two_theta_minimum"] == 2.0
+    assert sweep_state["two_theta_maximum"] == 9.0
+    assert sweep_state["sweep_axis_minimum"] == 0.2212
+    assert sweep_state["sweep_axis_maximum"] == 0.2218
+
+
+def test_origin_script_detects_csv_trajectory_from_exported_step_axis() -> None:
+    from orthoxrd.batch import parse_trajectory_csv
+
+    trajectory = parse_trajectory_csv(
+        "step_label,a_A,b_A\ninitial,3.200,\nloaded,,4.800\n",
+        _config(),
+    )
+    package = build_sweep_zip(generate_sweep(trajectory))
+
+    with zipfile.ZipFile(io.BytesIO(package)) as archive:
+        steps = list(
+            csv.DictReader(io.StringIO(archive.read("sweep_steps.csv").decode("utf-8")))
+        )
+        script = archive.read("origin_import.py").decode("utf-8")
+
+    assert steps
+    assert {row["sweep_axis"] for row in steps} == {"trajectory"}
+    assert 'row.get("sweep_axis") == "trajectory"' in script

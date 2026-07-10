@@ -1,0 +1,13 @@
+{
+  "name": "orthoxrd-live-component",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun build src/live-component.ts --outfile ../orthoxrd/_live_component/live-component.js --target browser --format esm --minify",
+    "test": "bun test",
+    "typecheck": "bunx tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}
