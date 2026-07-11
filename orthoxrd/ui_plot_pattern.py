@@ -6,6 +6,7 @@ from typing import Literal
 import numpy as np
 import plotly.graph_objects as go
 
+from orthoxrd.i18n import t
 from orthoxrd.simulation import CalculatedPeak, SimulationResult
 from orthoxrd.ui_plot_state import PlotState
 from orthoxrd.ui_plot_theme import ACCENT, SERIES, plot_layout
@@ -41,7 +42,7 @@ def plot_pattern(
             x=x_values,
             y=y_values,
             mode="lines",
-            name="profile model" if intensity == "model" else "profile relative",
+            name=t("plot.trace.model") if intensity == "model" else t("plot.trace.relative"),
             line={"color": ACCENT, "width": 1.8},
             hovertemplate="%{x:.7g}<br>I=%{y:.7g}<extra></extra>",
         )
@@ -49,14 +50,8 @@ def plot_pattern(
         _add_sticks(figure, peaks, wavelength, x_axis, intensity, selected_series)
     if show_hkl:
         _add_labels(figure, peaks, wavelength, x_axis, intensity)
-    x_title = {
-        "2theta": "2theta (deg)",
-        "q_primary": "q_primary (A^-1)",
-        "d_primary": "d_primary (A)",
-    }[x_axis]
-    y_title = (
-        "model intensity (calculated units)" if intensity == "model" else "relative intensity (%)"
-    )
+    x_title = t(f"plot.x_title.{x_axis}")
+    y_title = t("plot.y_title.model") if intensity == "model" else t("plot.y_title.relative")
     figure.update_layout(
         **plot_layout(height=510, x_title=x_title, y_title=y_title),
         hovermode="x unified",
@@ -90,8 +85,8 @@ def _add_sticks(
     regular = tuple(peak for peak in peaks if peak.series_id != selected_series)
     selected = tuple(peak for peak in peaks if peak.series_id == selected_series)
     for name, values, color, width in (
-        ("Bragg reflections", regular, "rgba(242,184,75,.45)", 0.02),
-        ("selected reflection", selected, SERIES[2], 0.035),
+        (t("plot.trace.bragg"), regular, "rgba(242,184,75,.45)", 0.02),
+        (t("plot.trace.selected"), selected, SERIES[2], 0.035),
     ):
         if not values:
             continue

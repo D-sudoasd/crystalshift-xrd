@@ -1,0 +1,5 @@
+# Discrete peak intensity fit (not Rietveld)
+
+We extend CrystalShift XRD beyond pure forward modelling with a **discrete peak intensity fit**: recover Wyckoff y plus a single scale factor S from a table of observed peak strengths, while keeping a, b, c, radiation, and correction toggles fixed. The objective is weighted least squares with closed-form S(y); y is explored by a full-range grid scan (default [0, 0.5]) plus local refinement, and the full process tables are exportable.
+
+We deliberately **do not** implement full-pattern profile fitting, background, peak-shape refinement, zero shift, or absolute intensity calibration in v1. Peak-height mode is allowed only as a documented equal-width proxy; peak-area mode is the integral-intensity-aligned path. Results never auto-overwrite the main structure state — the user must apply y* explicitly. This keeps the product a transparent kinematic workbench rather than a silent Rietveld substitute, while still supporting reproducible inverse estimation for teaching and paper-style exports.

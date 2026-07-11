@@ -6,6 +6,7 @@ from typing import Literal
 import numpy as np
 import plotly.graph_objects as go
 
+from orthoxrd.i18n import t
 from orthoxrd.structure_factor import analytic_unit_structure_factor_squared
 from orthoxrd.ui_plot_theme import SERIES, plot_layout
 
@@ -59,16 +60,11 @@ def plot_f2_evolution(
         line_color="#f3f6fa",
         opacity=0.75,
     )
-    labels = {
-        "y": "Wyckoff y",
-        "signed_shuffle": "signed shuffle = 2(y - 0.25)",
-        "shuffle_magnitude": "shuffle magnitude",
-    }
     figure.update_layout(
         **plot_layout(
             height=480,
-            x_title=labels[axis],
-            y_title="unit-scatterer F2",
+            x_title=t(f"f2.x_title.{axis}"),
+            y_title=t("f2.y_title"),
         ),
         hovermode="x unified",
     )

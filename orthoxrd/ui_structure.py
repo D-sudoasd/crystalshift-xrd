@@ -11,6 +11,7 @@ from orthoxrd.constants import (
     WYCKOFF_Y_MAX,
     WYCKOFF_Y_MIN,
 )
+from orthoxrd.i18n import t, th
 from orthoxrd.models import LatticeParameters
 from orthoxrd.presets import LATTICE_PRESETS
 from orthoxrd.structure_factor import signed_shuffle_from_y, y_from_shuffle_magnitude
@@ -26,12 +27,13 @@ SHUFFLE_KEY = "structure_shuffle"
 
 def render_structure_panel() -> StructureState:
     _ensure_structure_defaults()
-    st.markdown("#### Structure")
+    st.markdown(f"#### {t('structure.title')}")
     preset_name = st.selectbox(
-        "Lattice preset",
+        t("structure.preset"),
         list(LATTICE_PRESETS),
         key=PRESET_KEY,
         on_change=_apply_selected_preset,
+        help=th("structure.preset"),
     )
     st.caption(LATTICE_PRESETS[preset_name].note)
     lattice = _render_lattice_inputs()
@@ -79,11 +81,35 @@ def _sync_y_from_shuffle() -> None:
 def _render_lattice_inputs() -> LatticeParameters:
     a_col, b_col, c_col = st.columns(3)
     with a_col:
-        a_value = st.number_input("a (A)", 1.0, 20.0, step=0.001, format="%.4f", key=A_KEY)
+        a_value = st.number_input(
+            t("structure.a"),
+            1.0,
+            20.0,
+            step=0.001,
+            format="%.4f",
+            key=A_KEY,
+            help=th("structure.a"),
+        )
     with b_col:
-        b_value = st.number_input("b (A)", 1.0, 20.0, step=0.001, format="%.4f", key=B_KEY)
+        b_value = st.number_input(
+            t("structure.b"),
+            1.0,
+            20.0,
+            step=0.001,
+            format="%.4f",
+            key=B_KEY,
+            help=th("structure.b"),
+        )
     with c_col:
-        c_value = st.number_input("c (A)", 1.0, 20.0, step=0.001, format="%.4f", key=C_KEY)
+        c_value = st.number_input(
+            t("structure.c"),
+            1.0,
+            20.0,
+            step=0.001,
+            format="%.4f",
+            key=C_KEY,
+            help=th("structure.c"),
+        )
     return LatticeParameters(float(a_value), float(b_value), float(c_value))
 
 
@@ -91,34 +117,44 @@ def _render_shuffle_inputs() -> float:
     y_col, shuffle_col, signed_col = st.columns(3)
     with y_col:
         y_value = st.number_input(
-            f"Wyckoff y ({WYCKOFF_Y_MIN:.3f}-{WYCKOFF_Y_MAX:.3f})",
+            t("structure.y", ymin=WYCKOFF_Y_MIN, ymax=WYCKOFF_Y_MAX),
             WYCKOFF_Y_MIN,
             WYCKOFF_Y_MAX,
             step=0.001,
             format="%.4f",
             key=Y_KEY,
             on_change=_sync_shuffle_from_y,
+            help=th("structure.y"),
         )
     with shuffle_col:
         st.number_input(
-            (f"Basal shuffle magnitude ({SHUFFLE_MAGNITUDE_MIN:.3f}-{SHUFFLE_MAGNITUDE_MAX:.3f})"),
+            t(
+                "structure.shuffle",
+                smin=SHUFFLE_MAGNITUDE_MIN,
+                smax=SHUFFLE_MAGNITUDE_MAX,
+            ),
             SHUFFLE_MAGNITUDE_MIN,
             SHUFFLE_MAGNITUDE_MAX,
             step=0.001,
             format="%.4f",
             key=SHUFFLE_KEY,
             on_change=_sync_y_from_shuffle,
+            help=th("structure.shuffle"),
         )
     with signed_col:
         signed_shuffle = signed_shuffle_from_y(float(y_value))
         st.markdown(
             """
             <div class="xrd-readout-card">
-                <div class="xrd-readout-label">signed shuffle</div>
+                <div class="xrd-readout-label">{label}</div>
                 <div class="xrd-readout-value">{value}</div>
-                <div class="xrd-readout-meta">2(y - 0.25)</div>
+                <div class="xrd-readout-meta">{meta}</div>
             </div>
-            """.format(value=f"{signed_shuffle:+.4f}"),
+            """.format(
+                label=t("structure.signed_label"),
+                value=f"{signed_shuffle:+.4f}",
+                meta=t("structure.signed_meta"),
+            ),
             unsafe_allow_html=True,
         )
     return float(y_value)
@@ -128,31 +164,35 @@ def _render_range_note() -> None:
     signed_min = signed_shuffle_from_y(WYCKOFF_Y_MIN)
     signed_max = signed_shuffle_from_y(WYCKOFF_Y_MAX)
     st.markdown(
-        '<div class="xrd-note"><strong>y / shuffle relation</strong> '
-        'signed = 2(y - 0.25); magnitude = abs(signed). '
-        f'Ti-Nb lower branch: y={TI_NB_Y_MIN:.3f}..{TI_NB_Y_MAX:.3f}, '
-        f'magnitude=0..{TI_NB_SHUFFLE_MAGNITUDE_MAX:.3f}.</div>',
+        t(
+            "structure.relation_note",
+            y_min=TI_NB_Y_MIN,
+            y_max=TI_NB_Y_MAX,
+            s_max=TI_NB_SHUFFLE_MAGNITUDE_MAX,
+        ),
         unsafe_allow_html=True,
     )
-    with st.expander("Valid ranges and branch details"):
+    with st.expander(t("structure.expander")):
         st.caption(
-            f"Wyckoff y valid range: {WYCKOFF_Y_MIN:.3f} to {WYCKOFF_Y_MAX:.3f}"
+            t("structure.range_y", ymin=WYCKOFF_Y_MIN, ymax=WYCKOFF_Y_MAX)
         )
         st.caption(
-            "shuffle_signed = 2(y - 0.25), range: "
-            f"{signed_min:.3f} to {signed_max:+.3f}"
+            t("structure.range_signed", smin=signed_min, smax=signed_max)
         )
         st.caption(
-            "shuffle_magnitude = abs(shuffle_signed), range: "
-            f"{SHUFFLE_MAGNITUDE_MIN:.3f} to {SHUFFLE_MAGNITUDE_MAX:.3f}"
+            t(
+                "structure.range_mag",
+                smin=SHUFFLE_MAGNITUDE_MIN,
+                smax=SHUFFLE_MAGNITUDE_MAX,
+            )
         )
         st.caption(
-            "Default Ti-Nb lower-branch sweep: "
-            f"y={TI_NB_Y_MIN:.3f}..{TI_NB_Y_MAX:.3f}, "
-            f"shuffle_magnitude={SHUFFLE_MAGNITUDE_MIN:.3f}.."
-            f"{TI_NB_SHUFFLE_MAGNITUDE_MAX:.3f}"
+            t(
+                "structure.range_tinb",
+                ymin=TI_NB_Y_MIN,
+                ymax=TI_NB_Y_MAX,
+                smin=SHUFFLE_MAGNITUDE_MIN,
+                smax=TI_NB_SHUFFLE_MAGNITUDE_MAX,
+            )
         )
-        st.caption(
-            "Lower branch: y = 0.25 - shuffle_magnitude / 2; "
-            "upper branch: y = 0.25 + shuffle_magnitude / 2."
-        )
+        st.caption(t("structure.branch_detail"))

@@ -6,6 +6,7 @@ from pathlib import Path
 import streamlit as st
 
 from orthoxrd.export_writer import PreparedExport, cleanup_export
+from orthoxrd.i18n import t, th
 from orthoxrd.simulation import SimulationResult
 
 CURRENT_EXPORT_KEY = "current_prepared_export"
@@ -26,36 +27,37 @@ def render_current_export(
         _discard(CURRENT_EXPORT_KEY)
         prepared = None
     if st.button(
-        "Prepare current ZIP",
+        t("export.prepare"),
         key="prepare_current_zip",
-        help="Build spectrum, peaks, config, manifest, and analysis README.",
+        help=th("export.prepare"),
         use_container_width=True,
     ):
         _discard(CURRENT_EXPORT_KEY)
-        with st.spinner("Preparing current simulation export..."):
+        with st.spinner(t("export.spinner")):
             prepared = prepare(result)
         st.session_state[CURRENT_EXPORT_KEY] = prepared
         st.session_state[CURRENT_EXPORT_SIGNATURE_KEY] = state_signature
     if prepared is None:
-        st.caption("Schema 2.1 export is prepared on demand.")
+        st.caption(t("export.caption"))
         return
     path = Path(prepared.path)
     if not path.exists():
         st.session_state.pop(CURRENT_EXPORT_KEY, None)
-        st.warning("Prepared export expired. Prepare it again.")
+        st.warning(t("export.expired"))
         return
     with path.open("rb") as handle:
         st.download_button(
-            "Download current ZIP",
+            t("export.download"),
             data=handle,
             file_name="current_simulation.zip",
             mime="application/zip",
             key="download_current_zip",
             use_container_width=True,
+            help=th("export.download"),
         )
-    st.caption(f"{prepared.size_bytes / 1024:.1f} KiB | SHA-256 {prepared.sha256[:12]}...")
-
-
+    st.caption(
+        t("export.size", kib=prepared.size_bytes / 1024, sha=prepared.sha256[:12])
+    )
 
 
 def discard_prepared(key: str) -> None:

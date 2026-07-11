@@ -7,6 +7,18 @@ export type Marker = {
   readonly intensity: number;
 };
 
+export type LiveUiLabels = {
+  readonly intensity: string;
+  readonly globalRelative: string;
+  readonly localRelative: string;
+  readonly model: string;
+  readonly difference: string;
+  readonly baseline: string;
+  readonly current: string;
+  readonly ariaCanvas: string;
+  readonly ariaSlider: string;
+};
+
 export type LivePayload = {
   readonly axisLabel: string;
   readonly axisUnit: string;
@@ -27,6 +39,7 @@ export type LivePayload = {
   readonly yMaximum: number;
   readonly markers: readonly (readonly Marker[])[];
   readonly disabled: boolean;
+  readonly ui: LiveUiLabels;
 };
 
 export type ComponentArgs = {

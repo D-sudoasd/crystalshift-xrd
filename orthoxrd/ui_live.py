@@ -8,6 +8,7 @@ import numpy as np
 import streamlit as st
 
 from orthoxrd.batch_models import ShuffleBranch, SweepAxis
+from orthoxrd.i18n import t, th
 from orthoxrd.live import (
     LivePreviewConfig,
     LivePreviewError,
@@ -48,20 +49,17 @@ def render_live_view(current: SimulationResult, plot_state: PlotState) -> None:
         result = _generate(config)
     stale = result.signature != desired_signature
     if stale:
-        st.markdown(
-            '<div class="xrd-state xrd-state--warning">Live preview is stale. '
-            "Rebuild after changing non-active physics or range settings.</div>",
-            unsafe_allow_html=True,
-        )
-        if st.button("Rebuild live preview", type="primary", use_container_width=True):
+        st.markdown(t("live.stale"), unsafe_allow_html=True)
+        if st.button(
+            t("live.rebuild"),
+            type="primary",
+            use_container_width=True,
+            help=th("live.rebuild"),
+        ):
             result = _generate(config)
             stale = False
     else:
-        st.markdown(
-            '<div class="xrd-state xrd-state--valid">Live preview matches the '
-            "active scientific configuration.</div>",
-            unsafe_allow_html=True,
-        )
+        st.markdown(t("live.valid"), unsafe_allow_html=True)
     current_index = _current_index(current, result)
     baseline_index = _baseline_index(result)
     if not stale:
@@ -69,7 +67,7 @@ def render_live_view(current: SimulationResult, plot_state: PlotState) -> None:
     _render_component(result, plot_state, current_index, baseline_index, stale)
     if stale:
         invalidate_live_export()
-        st.caption("The previous preview is retained, but interaction and export are disabled.")
+        st.caption(t("live.stale_caption"))
         return
     render_live_export(result, plot_state, current_index, baseline_index)
 
@@ -83,8 +81,12 @@ def _render_component(
 ) -> None:
     plot_state = _resolved_live_plot_state(result, plot_state)
     st.caption(
-        f"{len(result.axis_values)} exact frames | {result.config.preview_points} points/frame | "
-        f"{result.intensity_model.size:,} browser preview cells"
+        t(
+            "live.frames_caption",
+            frames=len(result.axis_values),
+            points=result.config.preview_points,
+            cells=result.intensity_model.size,
+        )
     )
     component_key = (
         f"live_pattern_{result.signature[:12]}_{baseline_index}_{int(disabled)}"
@@ -113,11 +115,18 @@ def _render_baseline_action(
     left, right = st.columns((2.2, 1))
     with left:
         st.caption(
-            f"Baseline {result.axis_values[baseline_index]:.7g} | "
-            f"Current {result.axis_values[current_index]:.7g}"
+            t(
+                "live.baseline_caption",
+                baseline=result.axis_values[baseline_index],
+                current=result.axis_values[current_index],
+            )
         )
     with right:
-        if st.button("Set current as baseline", use_container_width=True):
+        if st.button(
+            t("live.set_baseline"),
+            use_container_width=True,
+            help=th("live.set_baseline"),
+        ):
             baseline_index = current_index
             st.session_state[LIVE_BASELINE_KEY] = current_index
             invalidate_live_export()
@@ -169,7 +178,7 @@ def _generate_cached(config: LivePreviewConfig) -> LivePreviewResult:
 
 def _generate(config: LivePreviewConfig) -> LivePreviewResult:
     try:
-        with st.spinner("Preparing exact live frames..."):
+        with st.spinner(t("live.spinner")):
             result = _generate_cached(config)
     except LivePreviewError as exc:
         st.error(str(exc))

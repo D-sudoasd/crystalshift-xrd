@@ -7,6 +7,7 @@ import numpy as np
 import plotly.graph_objects as go
 
 from orthoxrd.batch_models import SweepResult
+from orthoxrd.i18n import t
 from orthoxrd.ui_plot_theme import HEATMAP_SCALE, SERIES, TEXT, plot_layout
 from orthoxrd.ui_sweep_range import SweepDisplayRange
 
@@ -26,7 +27,11 @@ def plot_sweep_heatmap(
     x_values = result.steps[0].two_theta_deg[point_indices]
     y_values = [result.steps[index].step.axis_value for index in step_indices]
     step_labels = [result.steps[index].step.label for index in step_indices]
-    title = {"model": "I model", "global": "I global (%)", "local": "I local (%)"}[normalization]
+    title = {
+        "model": t("sweep.plot.i_model"),
+        "global": t("sweep.plot.i_global"),
+        "local": t("sweep.plot.i_local"),
+    }[normalization]
     figure = go.Figure(
         go.Heatmap(
             x=x_values,
@@ -44,8 +49,8 @@ def plot_sweep_heatmap(
     figure.update_layout(
         **plot_layout(
             height=max(430, min(720, 300 + len(step_indices) * 3)),
-            x_title="2theta (deg)",
-            y_title="sweep step",
+            x_title=t("sweep.plot.two_theta"),
+            y_title=t("sweep.plot.step"),
             show_legend=False,
         )
     )
@@ -89,9 +94,9 @@ def plot_sweep_waterfall(
         showlegend=False,
         scene={
             "bgcolor": "#121821",
-            "xaxis": {"title": "2theta (deg)", "gridcolor": "#2a3441"},
+            "xaxis": {"title": t("sweep.plot.two_theta"), "gridcolor": "#2a3441"},
             "yaxis": {"title": result.steps[0].step.axis, "gridcolor": "#2a3441"},
-            "zaxis": {"title": "intensity", "gridcolor": "#2a3441"},
+            "zaxis": {"title": t("sweep.plot.intensity"), "gridcolor": "#2a3441"},
             "camera": {"eye": {"x": 1.5, "y": -1.8, "z": 1.1}},
         },
     )
@@ -144,13 +149,12 @@ def plot_peak_evolution(
             hovertemplate="%{x:.7g}<br>%{y:.7g}<extra></extra>",
         )
     axis = result.steps[0].step.axis
-    labels = {
-        "F2": "F2",
-        "I_model": "model peak intensity",
-        "I_rel_global": "global relative peak intensity (%)",
-    }
     figure.update_layout(
-        **plot_layout(height=490, x_title=axis, y_title=labels[metric]),
+        **plot_layout(
+            height=490,
+            x_title=axis,
+            y_title=t(f"sweep.metric.{metric}"),
+        ),
         hovermode="x unified",
     )
     return figure

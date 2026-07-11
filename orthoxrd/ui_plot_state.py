@@ -8,6 +8,7 @@ import numpy as np
 import streamlit as st
 from numpy.typing import NDArray
 
+from orthoxrd.i18n import t, th
 from orthoxrd.simulation import SimulationResult
 
 XAxisKind = Literal["2theta", "q_primary", "d_primary"]
@@ -62,50 +63,70 @@ def render_plot_state(result: SimulationResult, axis: XAxisKind) -> PlotState:
     maximum_key = f"plot_x_max_{axis}"
     st.session_state.setdefault(minimum_key, x_default[0])
     st.session_state.setdefault(maximum_key, x_default[1])
-    with st.popover("Display range", use_container_width=True):
-        st.caption("Display-only crop. Simulation and exported rows remain unchanged.")
+    with st.popover(t("plot.display_range"), use_container_width=True):
+        st.caption(t("plot.display_caption"))
         left, right = st.columns(2)
         with left:
             x_minimum = float(
                 st.number_input(
-                    "X minimum",
+                    t("plot.x_min"),
                     format="%.7g",
                     key=minimum_key,
+                    help=th("plot.x_min"),
                 )
             )
         with right:
             x_maximum = float(
                 st.number_input(
-                    "X maximum",
+                    t("plot.x_max"),
                     format="%.7g",
                     key=maximum_key,
+                    help=th("plot.x_max"),
                 )
             )
-        y_auto = st.toggle("Automatic Y range", value=True, key="plot_y_auto")
+        y_auto = st.toggle(
+            t("plot.y_auto"),
+            value=True,
+            key="plot_y_auto",
+            help=th("plot.y_auto"),
+        )
         y_minimum = 0.0
         y_maximum = 105.0
         if not y_auto:
             y_left, y_right = st.columns(2)
             with y_left:
                 y_minimum = float(
-                    st.number_input("Y minimum", value=0.0, format="%.7g", key="plot_y_min")
+                    st.number_input(
+                        t("plot.y_min"),
+                        value=0.0,
+                        format="%.7g",
+                        key="plot_y_min",
+                        help=th("plot.y_min"),
+                    )
                 )
             with y_right:
                 y_maximum = float(
-                    st.number_input("Y maximum", value=105.0, format="%.7g", key="plot_y_max")
+                    st.number_input(
+                        t("plot.y_max"),
+                        value=105.0,
+                        format="%.7g",
+                        key="plot_y_max",
+                        help=th("plot.y_max"),
+                    )
                 )
         st.button(
-            "Reset display range",
+            t("plot.reset"),
             key=f"plot_reset_{axis}",
             use_container_width=True,
             on_click=_reset_x_bounds,
             args=(axis, x_default),
+            help=th("plot.reset"),
         )
     if x_maximum <= x_minimum:
-        st.error("X maximum must be greater than X minimum.")
+        st.error(t("plot.x_error"))
         x_minimum, x_maximum = x_default
     if not y_auto and y_maximum <= y_minimum:
-        st.error("Y maximum must be greater than Y minimum.")
+        st.error(t("plot.y_error"))
         y_minimum, y_maximum = 0.0, 105.0
     return PlotState(axis, x_minimum, x_maximum, y_auto, y_minimum, y_maximum)
 
@@ -128,6 +149,7 @@ def plot_state_from_session(result: SimulationResult) -> PlotState:
     if y_maximum <= y_minimum:
         y_minimum, y_maximum = 0.0, 105.0
     return PlotState(axis, x_minimum, x_maximum, y_auto, y_minimum, y_maximum)
+
 
 def _reset_x_bounds(axis: XAxisKind, bounds: tuple[float, float]) -> None:
     st.session_state[f"plot_x_min_{axis}"] = bounds[0]

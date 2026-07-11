@@ -7,6 +7,7 @@ import streamlit as st
 
 from orthoxrd.export_live import prepare_live_export
 from orthoxrd.export_writer import PreparedExport
+from orthoxrd.i18n import t, th
 from orthoxrd.live import LivePreviewResult
 from orthoxrd.ui_export import discard_prepared
 from orthoxrd.ui_plot_state import PlotState
@@ -23,13 +24,13 @@ def render_live_export(
 ) -> None:
     signature = _signature(result, plot_state, current_index, baseline_index)
     if st.button(
-        "Prepare live evolution ZIP",
+        t("live.export.prepare"),
         key="prepare_live_zip",
-        help="Build float64 sweep tables plus baseline/current q, d, and intensity comparison.",
+        help=th("live.export.prepare"),
         use_container_width=True,
     ):
         discard_prepared(LIVE_EXPORT_KEY)
-        with st.spinner("Building schema 2.1 live analysis package..."):
+        with st.spinner(t("live.export.spinner")):
             prepared = prepare_live_export(
                 result,
                 current_index,
@@ -40,7 +41,7 @@ def render_live_export(
         st.session_state[LIVE_EXPORT_SIGNATURE_KEY] = signature
     prepared = st.session_state.get(LIVE_EXPORT_KEY)
     if not isinstance(prepared, PreparedExport):
-        st.caption("Prepare the full-precision live ZIP on demand.")
+        st.caption(t("live.export.caption_prepare"))
         return
     path = Path(prepared.path)
     if (
@@ -48,18 +49,25 @@ def render_live_export(
         or not path.exists()
     ):
         discard_prepared(LIVE_EXPORT_KEY)
-        st.caption("The live selection changed. Prepare the ZIP again.")
+        st.caption(t("live.export.caption_changed"))
         return
     with path.open("rb") as handle:
         st.download_button(
-            "Download live_evolution.zip",
+            t("live.export.download"),
             data=handle,
             file_name="live_evolution.zip",
             mime="application/zip",
             key="download_live_zip",
             use_container_width=True,
+            help=th("live.export.download"),
         )
-    st.caption(f"{prepared.size_bytes / 1024:.1f} KiB | SHA-256 {prepared.sha256[:12]}...")
+    st.caption(
+        t(
+            "live.export.size",
+            kib=prepared.size_bytes / 1024,
+            sha=prepared.sha256[:12],
+        )
+    )
 
 
 def invalidate_live_export() -> None:

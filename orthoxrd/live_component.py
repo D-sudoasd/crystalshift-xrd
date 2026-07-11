@@ -11,6 +11,7 @@ from typing import Final, TypedDict
 import numpy as np
 from streamlit.components.v2 import component
 
+from orthoxrd.i18n import axis_label, t
 from orthoxrd.live import LivePreviewResult
 from orthoxrd.ui_plot_state import PlotState
 
@@ -22,18 +23,18 @@ _COMPONENT_HTML: Final = """
 <div class="live-shell">
   <div class="live-toolbar">
     <strong data-live-value>live parameter</strong>
-    <label>Intensity
+    <label data-live-intensity-label>Intensity
       <select data-live-normalisation>
-        <option value="global">Global relative</option>
-        <option value="local">Local relative</option>
-        <option value="model">Model</option>
+        <option value="global" data-live-opt-global>Global relative</option>
+        <option value="local" data-live-opt-local>Local relative</option>
+        <option value="model" data-live-opt-model>Model</option>
       </select>
     </label>
-    <label class="live-check"><input type="checkbox" data-live-difference> Difference</label>
+    <label class="live-check" data-live-difference-label><input type="checkbox" data-live-difference> <span data-live-difference-text>Difference</span></label>
   </div>
   <canvas data-live-canvas aria-label="Live theoretical XRD pattern"></canvas>
   <input data-live-slider type="range" aria-label="Live parameter frame">
-  <div class="live-legend"><span class="baseline">baseline</span><span class="current">current</span><span class="difference">difference</span></div>
+  <div class="live-legend"><span class="baseline" data-live-legend-baseline>baseline</span><span class="current" data-live-legend-current>current</span><span class="difference" data-live-legend-difference>difference</span></div>
 </div>
 """
 _COMPONENT_CSS: Final = """
@@ -67,6 +68,18 @@ class MarkerPayload(TypedDict):
     intensity: float
 
 
+class LiveUiPayload(TypedDict):
+    intensity: str
+    globalRelative: str
+    localRelative: str
+    model: str
+    difference: str
+    baseline: str
+    current: str
+    ariaCanvas: str
+    ariaSlider: str
+
+
 class LivePayload(TypedDict):
     axisLabel: str
     axisUnit: str
@@ -87,6 +100,7 @@ class LivePayload(TypedDict):
     yMaximum: float
     markers: list[list[MarkerPayload]]
     disabled: bool
+    ui: LiveUiPayload
 
 
 @dataclass(frozen=True, slots=True)
@@ -144,7 +158,7 @@ def _payload(
         for frame in result.markers
     ]
     return {
-        "axisLabel": result.config.axis,
+        "axisLabel": axis_label(result.config.axis),
         "axisUnit": _axis_unit(result.config.axis),
         "axisValues": result.axis_values.tolist(),
         "baselineIndex": baseline_index,
@@ -163,6 +177,17 @@ def _payload(
         "yMaximum": plot_state.y_maximum,
         "markers": markers,
         "disabled": disabled,
+        "ui": {
+            "intensity": t("live.ui.intensity"),
+            "globalRelative": t("live.ui.global"),
+            "localRelative": t("live.ui.local"),
+            "model": t("live.ui.model"),
+            "difference": t("live.ui.difference"),
+            "baseline": t("live.ui.baseline"),
+            "current": t("live.ui.current"),
+            "ariaCanvas": t("live.ui.aria_canvas"),
+            "ariaSlider": t("live.ui.aria_slider"),
+        },
     }
 
 

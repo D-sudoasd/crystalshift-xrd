@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 import streamlit as st
 
+from orthoxrd.i18n import radiation_mode_label, t, th
 from orthoxrd.models import RadiationLine
 from orthoxrd.powder import energy_kev_to_wavelength_a, wavelength_a_to_energy_kev
 from orthoxrd.presets import RADIATION_PRESETS
@@ -26,11 +27,13 @@ class RadiationState:
 
 def render_radiation_panel() -> RadiationState:
     _ensure_defaults()
-    st.markdown("#### Radiation")
+    st.markdown(f"#### {t('radiation.title')}")
     mode = st.selectbox(
-        "Incident source",
+        t("radiation.source"),
         ["Custom energy", "Custom wavelength", *RADIATION_PRESETS.keys()],
         key=MODE_KEY,
+        format_func=radiation_mode_label,
+        help=th("radiation.source"),
     )
     lines = _lines_from_mode(mode)
     primary_line = lines[0]
@@ -56,12 +59,13 @@ def _lines_from_mode(mode: str) -> tuple[RadiationLine, ...]:
     if mode == "Custom energy":
         energy = float(
             st.number_input(
-                "Energy (keV)",
+                t("radiation.energy"),
                 min_value=1.0,
                 max_value=200.0,
                 step=0.5,
                 format="%.4f",
                 key=ENERGY_KEY,
+                help=th("radiation.energy"),
             )
         )
         wavelength = energy_kev_to_wavelength_a(energy)
@@ -69,12 +73,13 @@ def _lines_from_mode(mode: str) -> tuple[RadiationLine, ...]:
     if mode == "Custom wavelength":
         wavelength = float(
             st.number_input(
-                "Wavelength (A)",
+                t("radiation.wavelength"),
                 min_value=0.05,
                 max_value=5.0,
                 step=0.001,
                 format="%.6f",
                 key=WAVELENGTH_KEY,
+                help=th("radiation.wavelength"),
             )
         )
         return _scale_custom_template(template, wavelength, f"{wavelength:g} A")
@@ -82,8 +87,9 @@ def _lines_from_mode(mode: str) -> tuple[RadiationLine, ...]:
     if len(preset_lines) == 1:
         return preset_lines
     include_doublet = st.checkbox(
-        "Include K-alpha2 component",
+        t("radiation.include_k_alpha2"),
         key=DOUBLET_KEY,
+        help=th("radiation.include_k_alpha2"),
     )
     return preset_lines if include_doublet else (preset_lines[0],)
 
@@ -135,28 +141,47 @@ def _render_radiation_note(
     primary_line = lines[0]
     if mode == "Custom energy":
         suffix = _custom_line_note(lines)
-        st.caption(f"Primary wavelength: {primary_line.wavelength_a:.6f} A{suffix}")
+        st.caption(
+            t(
+                "radiation.primary_wavelength",
+                wavelength=primary_line.wavelength_a,
+                suffix=suffix,
+            )
+        )
         return
     if mode == "Custom wavelength":
         suffix = _custom_line_note(lines)
-        st.caption(f"Primary energy: {primary_energy_kev:.4f} keV{suffix}")
+        st.caption(
+            t(
+                "radiation.primary_energy",
+                energy=primary_energy_kev,
+                suffix=suffix,
+            )
+        )
         return
     if len(lines) == 1:
         st.caption(
-            "Primary line: "
-            f"{primary_line.label}, lambda={primary_line.wavelength_a:.6f} A, "
-            f"energy={primary_energy_kev:.4f} keV"
+            t(
+                "radiation.primary_line_single",
+                label=primary_line.label,
+                wavelength=primary_line.wavelength_a,
+                energy=primary_energy_kev,
+            )
         )
         return
     secondary_line = lines[1]
     st.caption(
-        "Primary line: "
-        f"{primary_line.label} ({primary_line.weight:.1f}), secondary line: "
-        f"{secondary_line.label} ({secondary_line.weight:.1f})"
+        t(
+            "radiation.primary_line_doublet",
+            primary=primary_line.label,
+            w1=primary_line.weight,
+            secondary=secondary_line.label,
+            w2=secondary_line.weight,
+        )
     )
 
 
 def _custom_line_note(lines: tuple[RadiationLine, ...]) -> str:
     if len(lines) == 1:
         return ""
-    return f" | scaled {len(lines)}-line source; relative wavelengths and weights preserved"
+    return t("radiation.scaled_suffix", count=len(lines))

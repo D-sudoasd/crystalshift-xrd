@@ -5,11 +5,13 @@ import streamlit as st
 from orthoxrd.config import config_hash
 from orthoxrd.export_writer import PreparedExport
 from orthoxrd.export_zip import prepare_current_export
+from orthoxrd.i18n import ensure_language_state, render_language_toggle, t, th
 from orthoxrd.simulation import SimulationResult
 from orthoxrd.structure_factor import signed_shuffle_from_y
 from orthoxrd.ui_config import build_simulation_config, calculate_cached
 from orthoxrd.ui_export import render_current_export
 from orthoxrd.ui_f2 import render_f2_view
+from orthoxrd.ui_fit import consume_pending_structure_apply, render_fit_view
 from orthoxrd.ui_method import render_method_view
 from orthoxrd.ui_pattern import render_pattern_view
 from orthoxrd.ui_peaks import render_peaks_view
@@ -20,17 +22,20 @@ from orthoxrd.ui_structure import render_structure_panel
 from orthoxrd.ui_style import apply_style, summary_grid
 from orthoxrd.ui_sweep import render_sweep_view
 
-VIEWS = ["Pattern", "Peaks", "F2 evolution", "Sweep", "Method"]
+VIEW_CODES = ("pattern", "peaks", "f2", "sweep", "fit", "method")
 
 
 def main() -> None:
+    ensure_language_state()
     st.set_page_config(
-        page_title="CrystalShift XRD",
+        page_title=t("app.page_title"),
         page_icon=":material/science:",
         layout="wide",
         initial_sidebar_state="collapsed",
     )
     apply_style()
+    # Apply y* must land before structure number_inputs are created this run.
+    consume_pending_structure_apply()
     try:
         advanced = _render_title_and_advanced()
         radiation, structure = _render_core_parameters()
@@ -39,45 +44,54 @@ def main() -> None:
         st.error(str(exc))
         st.stop()
         raise RuntimeError("Streamlit stop did not interrupt execution") from exc
-    with st.spinner("Calculating active model..."):
+    with st.spinner(t("app.spinner")):
         result = calculate_cached(config)
     digest = config_hash(config)
     _render_active_configuration(structure, radiation, digest, result)
     navigation = st.segmented_control(
-        "Result view",
-        VIEWS,
-        default="Pattern",
+        t("nav.label"),
+        VIEW_CODES,
+        format_func=lambda code: t(f"nav.{code}"),
+        default="pattern",
         key="result_view",
         label_visibility="collapsed",
+        help=th("nav.label"),
     )
     match navigation:
-        case "Peaks":
+        case "peaks":
             render_peaks_view(result)
-        case "F2 evolution":
+        case "f2":
             render_f2_view(result)
-        case "Sweep":
+        case "sweep":
             render_sweep_view(result)
-        case "Method":
+        case "fit":
+            render_fit_view(result.config)
+        case "method":
             render_method_view()
         case _:
             render_pattern_view(result)
 
 
 def _render_title_and_advanced():
-    title_col, settings_col = st.columns((5.5, 1.35), vertical_alignment="center")
+    title_col, lang_col, settings_col = st.columns(
+        (5.0, 0.9, 1.2),
+        vertical_alignment="center",
+    )
     with title_col:
         st.markdown(
-            """
+            f"""
 <div class="xrd-titlebar">
-  <h1>CrystalShift XRD</h1>
-  <span class="xrd-model-tag">Cmcm 4c | schema 2.1</span>
+  <h1>{t("app.page_title")}</h1>
+  <span class="xrd-model-tag">{t("app.model_tag")}</span>
 </div>
 <div class="xrd-subtitle">
-  Kinematic powder model for lattice, Wyckoff-y, shuffle, and incident-radiation studies.
+  {t("app.subtitle")}
 </div>
 """,
             unsafe_allow_html=True,
         )
+    with lang_col:
+        render_language_toggle()
     with settings_col:
         return render_advanced_settings()
 
@@ -95,6 +109,7 @@ def _render_core_parameters():
 def _prepare_current_export(result: SimulationResult) -> PreparedExport:
     return prepare_current_export(result, plot_state_from_session(result))
 
+
 def _render_active_configuration(structure, radiation, digest: str, result) -> None:
     lattice = structure.lattice
     signed = signed_shuffle_from_y(structure.y)
@@ -102,14 +117,14 @@ def _render_active_configuration(structure, radiation, digest: str, result) -> N
     with summary_col:
         summary_grid(
             [
-                ("a (A)", f"{lattice.a:.5f}"),
-                ("b (A)", f"{lattice.b:.5f}"),
-                ("c (A)", f"{lattice.c:.5f}"),
-                ("Wyckoff y", f"{structure.y:.6f}"),
-                ("shuffle |s|", f"{abs(signed):.6f}"),
-                ("energy (keV)", f"{radiation.primary_energy_kev:.6g}"),
-                ("lambda (A)", f"{radiation.primary_wavelength_a:.7g}"),
-                ("config hash", digest[:12]),
+                (t("app.summary.a"), f"{lattice.a:.5f}"),
+                (t("app.summary.b"), f"{lattice.b:.5f}"),
+                (t("app.summary.c"), f"{lattice.c:.5f}"),
+                (t("app.summary.y"), f"{structure.y:.6f}"),
+                (t("app.summary.shuffle"), f"{abs(signed):.6f}"),
+                (t("app.summary.energy"), f"{radiation.primary_energy_kev:.6g}"),
+                (t("app.summary.lambda"), f"{radiation.primary_wavelength_a:.7g}"),
+                (t("app.summary.hash"), digest[:12]),
             ]
         )
     with export_col:
@@ -118,6 +133,9 @@ def _render_active_configuration(structure, radiation, digest: str, result) -> N
             result,
             digest,
             _prepare_current_export,
-            state_signature=repr(state),
+            state_signature=(
+                f"{digest}:{state.x_axis}:{state.x_minimum:.12g}:{state.x_maximum:.12g}:"
+                f"{int(state.y_auto)}:{state.y_minimum:.12g}:{state.y_maximum:.12g}"
+            ),
         )
     st.divider()

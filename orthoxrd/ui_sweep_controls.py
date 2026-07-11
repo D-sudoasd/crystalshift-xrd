@@ -5,22 +5,24 @@ import json
 import math
 from collections.abc import Mapping
 from dataclasses import dataclass, replace
+from typing import Final
 
 import streamlit as st
 
 from orthoxrd.batch_models import ShuffleBranch, SweepAxis, SweepConfig
 from orthoxrd.config import SimulationConfig, config_hash
+from orthoxrd.i18n import axis_label, t, th
 from orthoxrd.powder import wavelength_a_to_energy_kev
 
-AXIS_LABELS: dict[str, SweepAxis] = {
-    "Wyckoff y": "y",
-    "Shuffle magnitude": "shuffle_magnitude",
-    "Lattice a": "a_A",
-    "Lattice b": "b_A",
-    "Lattice c": "c_A",
-    "Energy": "energy_keV",
-    "Wavelength": "wavelength_A",
-}
+SWEEP_AXES: Final[tuple[SweepAxis, ...]] = (
+    "y",
+    "shuffle_magnitude",
+    "a_A",
+    "b_A",
+    "c_A",
+    "energy_keV",
+    "wavelength_A",
+)
 TRAJECTORY_TEMPLATE = """
 step_label,a_A,b_A,c_A,y,shuffle_magnitude,shuffle_branch,energy_keV,wavelength_A
 start,,,,0.167,,lower,,
@@ -42,33 +44,34 @@ class SweepFormState:
 def render_sweep_form(base: SimulationConfig, peak_count: int) -> SweepFormState:
     spectrum_points = int(
         st.number_input(
-            "Sweep spectrum points",
+            t("sweep.spectrum_points"),
             min_value=200,
             max_value=10_000,
             value=800,
             step=100,
             key="sweep_spectrum_points",
+            help=th("sweep.spectrum_points"),
         )
     )
     run_base = replace(base, spectrum_points=spectrum_points)
     mode = st.segmented_control(
-        "Sweep input",
-        ["Range sweep", "CSV trajectory"],
-        default="Range sweep",
+        t("sweep.input_mode"),
+        ["range", "trajectory"],
+        format_func=lambda code: t(f"sweep.input.{code}"),
+        default="range",
         key="sweep_input_mode",
+        help=th("sweep.input_mode"),
     )
     normalization = st.selectbox(
-        "Heatmap normalization",
-        ["Global across sweep", "Local per step", "Model intensity"],
+        t("sweep.normalization"),
+        ["global", "local", "model"],
+        format_func=lambda code: t(f"sweep.norm.{code}"),
         key="sweep_normalization",
-        help="Global normalization preserves amplitude evolution between steps.",
+        help=th("sweep.normalization"),
     )
-    if normalization == "Local per step":
-        st.warning(
-            "Local normalization rescales every step independently; "
-            "you cannot compare amplitude between steps."
-        )
-    if mode == "CSV trajectory":
+    if normalization == "local":
+        st.warning(t("sweep.local_warning"))
+    if mode == "trajectory":
         return _trajectory_form(run_base, normalization)
     return _range_form(run_base, peak_count, normalization)
 
@@ -78,21 +81,24 @@ def _range_form(
     peak_count: int,
     normalization: str,
 ) -> SweepFormState:
-    axis_label = st.selectbox("Sweep axis", list(AXIS_LABELS), key="sweep_axis")
-    axis = AXIS_LABELS[axis_label]
+    axis = st.selectbox(
+        t("sweep.axis"),
+        list(SWEEP_AXES),
+        format_func=axis_label,
+        key="sweep_axis",
+        help=th("sweep.axis"),
+    )
     branch: ShuffleBranch = "lower"
     if axis == "shuffle_magnitude":
         selected = st.selectbox(
-            "Shuffle branch",
-            ["Lower", "Upper"],
+            t("sweep.branch"),
+            ["lower", "upper"],
+            format_func=lambda code: t(f"branch.{code}"),
             key="sweep_shuffle_branch",
+            help=th("sweep.branch"),
         )
-        branch = "upper" if selected == "Upper" else "lower"
-        relation = (
-            "Lower branch: y = 0.25 - shuffle_magnitude / 2"
-            if branch == "lower"
-            else "Upper branch: y = 0.25 + shuffle_magnitude / 2"
-        )
+        branch = "upper" if selected == "upper" else "lower"
+        relation = t("sweep.branch_upper") if branch == "upper" else t("sweep.branch_lower")
         st.markdown(f'<div class="xrd-note">{relation}</div>', unsafe_allow_html=True)
     default_start, default_stop, default_step, minimum, maximum = _axis_defaults(base, axis)
     with st.form("range_sweep_form", border=True):
@@ -100,48 +106,56 @@ def _range_form(
         with left:
             start = float(
                 st.number_input(
-                    "Sweep start",
+                    t("sweep.start"),
                     min_value=minimum,
                     max_value=maximum,
                     value=default_start,
                     step=default_step,
                     format="%.6g",
                     key=f"sweep_start_{axis}",
+                    help=th("sweep.start"),
                 )
             )
         with middle:
             stop = float(
                 st.number_input(
-                    "Sweep stop",
+                    t("sweep.stop"),
                     min_value=minimum,
                     max_value=maximum,
                     value=default_stop,
                     step=default_step,
                     format="%.6g",
                     key=f"sweep_stop_{axis}",
+                    help=th("sweep.stop"),
                 )
             )
         with right:
             step = float(
                 st.number_input(
-                    "Sweep step",
+                    t("sweep.step"),
                     min_value=max(default_step / 100.0, 1e-8),
                     max_value=max(maximum - minimum, default_step),
                     value=default_step,
                     step=default_step,
                     format="%.6g",
                     key=f"sweep_step_{axis}",
+                    help=th("sweep.step"),
                 )
             )
         submitted = st.form_submit_button(
-            "Run sweep",
+            t("sweep.run"),
             type="primary",
             use_container_width=True,
+            help=th("sweep.run"),
         )
     count = _step_count(start, stop, step)
     st.caption(
-        f"Estimate: {count:,} steps | {count * base.spectrum_points:,} spectrum cells | "
-        f"up to {count * peak_count:,} peak rows."
+        t(
+            "sweep.estimate",
+            steps=count,
+            cells=count * base.spectrum_points,
+            peaks=count * peak_count,
+        )
     )
     config = SweepConfig.from_simulation(
         base,
@@ -173,27 +187,26 @@ def _range_form(
 def _trajectory_form(base: SimulationConfig, normalization: str) -> SweepFormState:
     with st.form("trajectory_sweep_form", border=True):
         upload = st.file_uploader(
-            "Trajectory CSV",
+            t("sweep.trajectory_file"),
             type=["csv"],
             key="sweep_trajectory_file",
-            help="Blank cells inherit the active configuration. Rows are never expanded.",
+            help=th("sweep.trajectory_file"),
         )
         submitted = st.form_submit_button(
-            "Run sweep",
+            t("sweep.run"),
             type="primary",
             use_container_width=True,
+            help=th("sweep.run"),
         )
     st.download_button(
-        "Trajectory template CSV",
+        t("sweep.trajectory_template"),
         TRAJECTORY_TEMPLATE,
         "trajectory_template.csv",
         "text/csv",
         key="trajectory_template",
+        help=th("sweep.trajectory_template"),
     )
-    st.caption(
-        "Columns: step_label, a_A, b_A, c_A, y, shuffle_magnitude, "
-        "shuffle_branch, energy_keV, wavelength_A. Limit: 1-1001 rows."
-    )
+    st.caption(t("sweep.trajectory_caption"))
     raw = upload.getvalue() if upload is not None else b""
     text = raw.decode("utf-8-sig") if raw else None
     payload = {

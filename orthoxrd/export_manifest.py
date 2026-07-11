@@ -18,60 +18,100 @@ def manifest_json(
     config: SimulationConfig,
     export_kind: str,
 ) -> str:
-    payload = {
+    files_block = {
+        name: {
+            "rows": metadata.rows,
+            "columns": metadata.columns,
+            "sha256": metadata.sha256,
+        }
+        for name, metadata in files.items()
+    }
+    units = {
+        "lattice_and_d": "angstrom",
+        "q_and_s": "angstrom^-1",
+        "two_theta": "degree",
+        "energy": "keV",
+        "relative_intensity": "percent",
+        "model_intensity": "arbitrary calculated units",
+    }
+    common = {
         "schema_version": "2.1",
         "app_version": __version__,
         "export_kind": export_kind,
         "generated_at_utc": datetime.now(UTC).isoformat(),
         "config_hash": digest,
         "model": "orthorhombic alpha-double-prime Cmcm 4c",
-        "intensity": {
-            "I_model_peak": (
-                "F2 * applied_multiplicity * applied_LP * "
-                "applied_volume_factor * radiation_line_weight"
-            ),
-            "I_profile_model": "sum(I_model_peak * profile(two_theta-center))",
-            "I_rel_local": "100 * value / maximum within one step",
-            "I_rel_global": "100 * value / maximum across the sweep",
-            "I_raw": (
-                "legacy alias for calculated model peak intensity; not experimental raw data"
-            ),
-        },
         "corrections": config_payload(config)["corrections"],
-        "normalization": {
-            "local": "each sweep step scaled to max 100",
-            "global": "all sweep steps scaled to the global maximum",
-        },
-        "compatibility": {
-            "legacy_headers_preserved": True,
-            "legacy_peak_fields": list(PEAK_EVOLUTION_FIELDS),
-            "legacy_spectra_fields": list(SPECTRA_LONG_FIELDS),
-            "byte_for_byte_compatible": False,
-            "numeric_tolerance": 1e-8,
-        },
-        "units": {
-            "lattice_and_d": "angstrom",
-            "q_and_s": "angstrom^-1",
-            "two_theta": "degree",
-            "energy": "keV",
-            "relative_intensity": "percent",
-            "model_intensity": "arbitrary calculated units",
-        },
-        "limits": [
-            "kinematic powder calculation",
-            "no texture or preferred orientation",
-            "no absorption or anomalous dispersion",
-            "no microstrain, domain size, zero shift, background, or absolute calibration",
-        ],
-        "files": {
-            name: {
-                "rows": metadata.rows,
-                "columns": metadata.columns,
-                "sha256": metadata.sha256,
-            }
-            for name, metadata in files.items()
-        },
+        "units": units,
+        "files": files_block,
     }
+    if export_kind == "fit":
+        payload = {
+            **common,
+            "intensity": {
+                "I_model_peak": (
+                    "F2 * applied_multiplicity * applied_LP * "
+                    "applied_volume_factor * radiation_line_weight"
+                ),
+                "objective": "chi2(y, S) = sum_i w_i (I_obs,i - S * I_model,i(y))^2",
+                "scale_S": (
+                    "closed-form non-negative least-squares "
+                    "S(y) = sum w I_obs I_model / sum w I_model^2"
+                ),
+            },
+            "normalization": {
+                "note": (
+                    "discrete peak intensity fit; no sweep step local/global "
+                    "profile normalization"
+                ),
+            },
+            "compatibility": {
+                "legacy_headers_preserved": False,
+                "byte_for_byte_compatible": False,
+                "numeric_tolerance": 1e-8,
+                "method": "discrete_peak_intensity_fit",
+            },
+            "limits": [
+                "kinematic powder calculation",
+                "not Rietveld / not full-pattern profile refinement",
+                "lattice, radiation, and intensity corrections fixed from simulation config",
+                "free parameters: Wyckoff y and scale S only",
+                "no texture, absorption, microstrain, domain size, zero shift, or background",
+            ],
+        }
+    else:
+        payload = {
+            **common,
+            "intensity": {
+                "I_model_peak": (
+                    "F2 * applied_multiplicity * applied_LP * "
+                    "applied_volume_factor * radiation_line_weight"
+                ),
+                "I_profile_model": "sum(I_model_peak * profile(two_theta-center))",
+                "I_rel_local": "100 * value / maximum within one step",
+                "I_rel_global": "100 * value / maximum across the sweep",
+                "I_raw": (
+                    "legacy alias for calculated model peak intensity; not experimental raw data"
+                ),
+            },
+            "normalization": {
+                "local": "each sweep step scaled to max 100",
+                "global": "all sweep steps scaled to the global maximum",
+            },
+            "compatibility": {
+                "legacy_headers_preserved": True,
+                "legacy_peak_fields": list(PEAK_EVOLUTION_FIELDS),
+                "legacy_spectra_fields": list(SPECTRA_LONG_FIELDS),
+                "byte_for_byte_compatible": False,
+                "numeric_tolerance": 1e-8,
+            },
+            "limits": [
+                "kinematic powder calculation",
+                "no texture or preferred orientation",
+                "no absorption or anomalous dispersion",
+                "no microstrain, domain size, zero shift, background, or absolute calibration",
+            ],
+        }
     return json.dumps(payload, ensure_ascii=True, indent=2, sort_keys=True) + chr(10)
 
 
@@ -154,4 +194,58 @@ Python heatmap
 HKL evolution
 Import peak_evolution_long.csv and group by series_id, or use one of the
 peak_evolution_matrix files for direct multi-curve plotting.
+"""
+
+
+def fit_readme() -> str:
+    return """# Discrete peak intensity fit export
+
+This package records a **discrete peak intensity fit** of Wyckoff y and a single
+scale factor S. It is **not** a Rietveld, Le Bail, Pawley, or full-pattern
+profile refinement. Lattice a, b, c, radiation, and intensity corrections are
+fixed from the active simulation configuration; only y and S are free.
+
+Method
+- Model peak intensity: I_model_peak = F2 * applied_multiplicity * applied_LP *
+  applied_volume * radiation_line_weight (same forward contract as the rest of
+  CrystalShift XRD).
+- Objective: chi2(y, S) = sum_i w_i (I_obs,i - S * I_model,i(y))^2.
+- Closed-form scale: S(y) = sum w I_obs I_model / sum w I_model^2 (S clamped >= 0).
+- Default weights (poisson): w_i = 1 / max(I_obs,i, epsilon). Equal weights are
+  optional; per-peak weight or sigma overrides global mode.
+- Search: uniform y grid (default full [0, 0.5]) then local refinement around the
+  grid minimum. Local minima on the grid are reported as candidates only.
+
+Observable modes
+- peak_area: preferred integral-intensity path vs I_model_peak.
+- peak_height: equal-width proxy; height proportional to area so y and relative
+  residuals match peak_area in v1; S absorbs any common constant. No per-peak
+  FWHM modelling.
+
+Files
+- observations.csv: input peaks with matched series_id / line and inclusion flags.
+  Columns input_weight and sigma are optional input fields; resolved_weight is the
+  weight used in chi2 (poisson/equal/override). Do not confuse weight names.
+- grid_scan.csv: y, S(y), chi2 for the scan grid.
+- refine_trace.csv: local-refinement evaluations (may be empty if refine is off).
+- best_fit.json / best_point.csv: y*, S*, chi2*, shuffle_signed, shuffle_magnitude.
+- residual_at_best.csv: per-peak residuals at the selected best point only
+  (weight column is resolved_weight used in chi2).
+- local_minima.csv: neighbourhood minima on the grid chi2 curve.
+- config.json: simulation payload (including panel wyckoff_y at Run — not free),
+  fit options, notes explaining simulation.y vs best.y, and best summary.
+- manifest.json: schema, formulas, units, limits, and file checksums.
+
+Not included by default
+- Full residual long-table for every grid y (keeps the package small).
+
+Python chi2 curve
+
+    import numpy as np
+    import matplotlib.pyplot as plt
+    data = np.genfromtxt("grid_scan.csv", delimiter=",", names=True)
+    plt.plot(data["y"], data["chi2"])
+    plt.xlabel("Wyckoff y")
+    plt.ylabel("chi2(y)")
+    plt.show()
 """

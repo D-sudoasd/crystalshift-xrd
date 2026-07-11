@@ -50,6 +50,7 @@ export default function liveComponent(component: ComponentArgs): () => void {
   slider.disabled = data.disabled;
   modeSelect.disabled = data.disabled;
   differenceToggle.disabled = data.disabled;
+  applyUiLabels(parentElement, data);
 
   const draw = (): void => {
     const value = data.axisValues[frameIndex] ?? 0;
@@ -93,6 +94,63 @@ export default function liveComponent(component: ComponentArgs): () => void {
     modeSelect.removeEventListener("change", scheduleDraw);
     differenceToggle.removeEventListener("change", scheduleDraw);
   };
+}
+
+function applyUiLabels(
+  root: HTMLElement | ShadowRoot,
+  data: ComponentArgs["data"],
+): void {
+  const ui = data.ui;
+  if (ui === undefined) {
+    return;
+  }
+  const intensityLabel = requireElement<HTMLElement>(root, "[data-live-intensity-label]");
+  if (intensityLabel !== null) {
+    const select = intensityLabel.querySelector("select");
+    intensityLabel.textContent = ui.intensity + " ";
+    if (select !== null) {
+      intensityLabel.appendChild(select);
+    }
+  }
+  const optGlobal = requireElement<HTMLOptionElement>(root, "[data-live-opt-global]");
+  const optLocal = requireElement<HTMLOptionElement>(root, "[data-live-opt-local]");
+  const optModel = requireElement<HTMLOptionElement>(root, "[data-live-opt-model]");
+  if (optGlobal !== null) {
+    optGlobal.textContent = ui.globalRelative;
+  }
+  if (optLocal !== null) {
+    optLocal.textContent = ui.localRelative;
+  }
+  if (optModel !== null) {
+    optModel.textContent = ui.model;
+  }
+  const differenceText = requireElement<HTMLElement>(root, "[data-live-difference-text]");
+  if (differenceText !== null) {
+    differenceText.textContent = ui.difference;
+  }
+  const legendBaseline = requireElement<HTMLElement>(root, "[data-live-legend-baseline]");
+  const legendCurrent = requireElement<HTMLElement>(root, "[data-live-legend-current]");
+  const legendDifference = requireElement<HTMLElement>(
+    root,
+    "[data-live-legend-difference]",
+  );
+  if (legendBaseline !== null) {
+    legendBaseline.textContent = ui.baseline;
+  }
+  if (legendCurrent !== null) {
+    legendCurrent.textContent = ui.current;
+  }
+  if (legendDifference !== null) {
+    legendDifference.textContent = ui.difference;
+  }
+  const canvas = requireElement<HTMLCanvasElement>(root, "[data-live-canvas]");
+  const slider = requireElement<HTMLInputElement>(root, "[data-live-slider]");
+  if (canvas !== null) {
+    canvas.setAttribute("aria-label", ui.ariaCanvas);
+  }
+  if (slider !== null) {
+    slider.setAttribute("aria-label", ui.ariaSlider);
+  }
 }
 
 export { clampFrame, normaliseRow, transformX } from "./live-math";

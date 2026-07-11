@@ -12,6 +12,7 @@ from orthoxrd.export_origin import SweepExportPlotState
 from orthoxrd.export_rows import peak_evolution_rows, sweep_step_rows
 from orthoxrd.export_writer import PreparedExport
 from orthoxrd.export_zip import prepare_sweep_export
+from orthoxrd.i18n import t, th
 from orthoxrd.simulation import SimulationResult
 from orthoxrd.ui_export import discard_prepared
 from orthoxrd.ui_plot_sweep import (
@@ -33,51 +34,40 @@ EXPORT_SIGNATURE_KEY = "sweep_export_signature"
 
 
 def render_sweep_view(current: SimulationResult) -> None:
-    st.subheader("Sweep and trajectory")
+    st.subheader(t("sweep.title"))
     form = render_sweep_form(current.config, len(current.peaks))
     _run_if_submitted(form, current)
     result = st.session_state.get(RESULT_KEY)
     if not isinstance(result, SweepResult):
-        st.info(
-            "Configure the sweep and select Run sweep. No batch calculation runs automatically."
-        )
+        st.info(t("sweep.empty"))
         return
     stale = st.session_state.get(SIGNATURE_KEY) != form.signature
     if stale:
-        st.markdown(
-            '<div class="xrd-state xrd-state--warning">'
-            "Result is stale because the active configuration changed. "
-            "The preview is retained, but export is disabled until rerun."
-            "</div>",
-            unsafe_allow_html=True,
-        )
+        st.markdown(t("sweep.stale"), unsafe_allow_html=True)
         discard_prepared(EXPORT_KEY)
         st.session_state.pop(EXPORT_SIGNATURE_KEY, None)
     else:
-        st.markdown(
-            '<div class="xrd-state xrd-state--valid">'
-            "Sweep result matches the active configuration."
-            "</div>",
-            unsafe_allow_html=True,
-        )
+        st.markdown(t("sweep.valid"), unsafe_allow_html=True)
     _summary(result)
-    normalization = _normalization(form.normalization)
+    normalization = cast(SpectrumNormalization, form.normalization)
     display_range = render_sweep_display_range(result)
     view = st.segmented_control(
-        "Sweep result view",
-        ["Heatmap", "Waterfall", "Peak evolution", "Data preview"],
-        default="Heatmap",
+        t("sweep.result_view"),
+        ["heatmap", "waterfall", "peak_evolution", "data_preview"],
+        format_func=lambda code: t(f"sweep.view.{code}"),
+        default="heatmap",
         key="sweep_result_view",
+        help=th("sweep.result_view"),
     )
-    if view == "Waterfall":
+    if view == "waterfall":
         st.plotly_chart(
             plot_sweep_waterfall(result, normalization, display_range),
             width="stretch",
             config={"displaylogo": False},
         )
-    elif view == "Peak evolution":
+    elif view == "peak_evolution":
         _render_peak_evolution(result)
-    elif view == "Data preview":
+    elif view == "data_preview":
         _render_data_preview(result)
     else:
         st.plotly_chart(
@@ -94,13 +84,13 @@ def _run_if_submitted(form: SweepFormState, current: SimulationResult) -> None:
     try:
         if form.mode == "trajectory":
             if not form.trajectory_text:
-                raise ValueError("Select a trajectory CSV before running.")
+                raise ValueError(t("sweep.err.no_trajectory"))
             config = batch_engine.parse_trajectory_csv(form.trajectory_text, form.base_config)
         else:
             if form.range_config is None:
-                raise ValueError("Range sweep configuration is incomplete.")
+                raise ValueError(t("sweep.err.incomplete_range"))
             config = form.range_config
-        with st.spinner("Calculating sweep..."):
+        with st.spinner(t("sweep.calc_spinner")):
             result = batch_engine.generate_sweep(config)
     except TrajectoryValidationError as exc:
         st.error(str(exc))
@@ -124,27 +114,24 @@ def _summary(result: SweepResult) -> None:
     spectrum_cells = len(result.steps) * len(result.steps[0].two_theta_deg)
     kpi_grid(
         [
-            ("steps", f"{len(result.steps):,}"),
-            ("peak rows", f"{peak_rows:,}"),
-            ("spectrum cells", f"{spectrum_cells:,}"),
-            ("global profile max", f"{result.spectrum_global_max:.6g}"),
+            (t("sweep.kpi.steps"), f"{len(result.steps):,}"),
+            (t("sweep.kpi.peak_rows"), f"{peak_rows:,}"),
+            (t("sweep.kpi.spectrum_cells"), f"{spectrum_cells:,}"),
+            (t("sweep.kpi.global_max"), f"{result.spectrum_global_max:.6g}"),
         ]
     )
 
 
 def _render_peak_evolution(result: SweepResult) -> None:
-    metric_label = st.selectbox(
-        "Peak metric",
-        ["F2", "Model peak intensity", "Global relative peak intensity"],
-        key="sweep_peak_metric",
-    )
     metric = cast(
         PeakMetric,
-        {
-            "F2": "F2",
-            "Model peak intensity": "I_model",
-            "Global relative peak intensity": "I_rel_global",
-        }[metric_label],
+        st.selectbox(
+            t("sweep.peak_metric"),
+            ["F2", "I_model", "I_rel_global"],
+            format_func=lambda code: t(f"sweep.metric.{code}"),
+            key="sweep_peak_metric",
+            help=th("sweep.peak_metric"),
+        ),
     )
     series = available_series(result)
     labels = [label for _, label in series]
@@ -154,11 +141,12 @@ def _render_peak_evolution(result: SweepResult) -> None:
         if any(label.endswith(hkl) for hkl in ("110", "020", "021", "131"))
     ][:12]
     selected_labels = st.multiselect(
-        "Peak series (maximum 12)",
+        t("sweep.peak_series"),
         labels,
         default=defaults or labels[:4],
         max_selections=12,
         key="sweep_peak_series",
+        help=th("sweep.peak_series"),
     )
     label_to_id = {label: series_id for series_id, label in series}
     selected_ids = [label_to_id[label] for label in selected_labels]
@@ -170,21 +158,21 @@ def _render_peak_evolution(result: SweepResult) -> None:
 
 
 def _render_data_preview(result: SweepResult) -> None:
-    st.markdown("##### Sweep steps")
+    st.markdown(t("sweep.steps_header"))
     st.dataframe(
         list(sweep_step_rows(result)),
         width="stretch",
         hide_index=True,
         height=250,
     )
-    st.markdown("##### Peak evolution sample")
+    st.markdown(t("sweep.peak_sample_header"))
     rows = []
     for index, row in enumerate(peak_evolution_rows(result)):
         if index >= 500:
             break
         rows.append(row)
     st.dataframe(rows, width="stretch", hide_index=True, height=360)
-    st.caption("Preview is limited to 500 peak rows. The ZIP contains the complete tables.")
+    st.caption(t("sweep.preview_caption"))
 
 
 def _render_export(
@@ -200,13 +188,14 @@ def _render_export(
     )
     st.divider()
     if st.button(
-        "Prepare sweep ZIP",
+        t("sweep.prepare"),
         disabled=stale,
         key="prepare_sweep_zip",
         use_container_width=True,
+        help=th("sweep.prepare"),
     ):
         discard_prepared(EXPORT_KEY)
-        with st.spinner("Streaming schema 2.1 files into ZIP..."):
+        with st.spinner(t("sweep.spinner")):
             prepared = prepare_sweep_export(
                 result,
                 SweepExportPlotState(
@@ -220,33 +209,25 @@ def _render_export(
         st.session_state[EXPORT_SIGNATURE_KEY] = active_export_signature
     prepared = st.session_state.get(EXPORT_KEY)
     if not isinstance(prepared, PreparedExport):
-        st.caption("Run the active configuration, then prepare the schema 2.1 ZIP.")
+        st.caption(t("sweep.prepare_caption"))
         return
     export_matches = (
         st.session_state.get(EXPORT_SIGNATURE_KEY) == active_export_signature
     )
     path = Path(prepared.path)
     if stale or not export_matches or not path.exists():
-        st.caption("Run the active configuration, then prepare the schema 2.1 ZIP.")
+        st.caption(t("sweep.prepare_caption"))
         return
     with path.open("rb") as handle:
         st.download_button(
-            "Download sweep ZIP",
+            t("sweep.download"),
             data=handle,
             file_name="orthorhombic_xrd_sweep.zip",
             mime="application/zip",
             key="download_sweep_zip",
             use_container_width=True,
+            help=th("sweep.download"),
         )
-    st.caption(f"{prepared.size_bytes / 1024:.1f} KiB | SHA-256 {prepared.sha256[:12]}...")
-
-
-def _normalization(label: str) -> SpectrumNormalization:
-    return cast(
-        SpectrumNormalization,
-        {
-            "Global across sweep": "global",
-            "Local per step": "local",
-            "Model intensity": "model",
-        }[label],
+    st.caption(
+        t("sweep.export_size", kib=prepared.size_bytes / 1024, sha=prepared.sha256[:12])
     )

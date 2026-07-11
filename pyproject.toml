@@ -37,6 +37,9 @@ target-version = "py311"
 select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
 ignore = ["E741", "RUF001", "RUF002", "RUF003"]
 
+[tool.ruff.lint.per-file-ignores]
+"orthoxrd/locales/*.py" = ["E501"]
+
 [tool.basedpyright]
 include = ["orthoxrd", "app.py"]
 pythonVersion = "3.11"

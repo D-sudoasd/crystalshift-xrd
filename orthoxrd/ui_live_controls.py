@@ -5,18 +5,19 @@ from typing import Final, assert_never
 import streamlit as st
 
 from orthoxrd.batch_models import ShuffleBranch, SweepAxis
+from orthoxrd.i18n import axis_label, t, th
 from orthoxrd.live import LivePreviewConfig, current_axis_value
 from orthoxrd.simulation import SimulationResult
 
-LIVE_AXIS_LABELS: Final[dict[str, SweepAxis]] = {
-    "Shuffle magnitude": "shuffle_magnitude",
-    "Wyckoff y": "y",
-    "Lattice a": "a_A",
-    "Lattice b": "b_A",
-    "Lattice c": "c_A",
-    "Energy": "energy_keV",
-    "Wavelength": "wavelength_A",
-}
+LIVE_AXES: Final[tuple[SweepAxis, ...]] = (
+    "shuffle_magnitude",
+    "y",
+    "a_A",
+    "b_A",
+    "c_A",
+    "energy_keV",
+    "wavelength_A",
+)
 _AXIS_LIMITS: Final[dict[SweepAxis, tuple[float, float]]] = {
     "y": (0.0, 0.5),
     "shuffle": (0.0, 0.5),
@@ -32,51 +33,61 @@ _AXIS_LIMITS: Final[dict[SweepAxis, tuple[float, float]]] = {
 def render_live_controls(current: SimulationResult) -> LivePreviewConfig:
     control, range_col = st.columns((0.9, 2.1), gap="large")
     with control:
-        label = st.selectbox("Live parameter", list(LIVE_AXIS_LABELS), key="live_axis")
-        axis = LIVE_AXIS_LABELS[label]
+        axis = st.selectbox(
+            t("live.parameter"),
+            list(LIVE_AXES),
+            format_func=axis_label,
+            key="live_axis",
+            help=th("live.parameter"),
+        )
         branch: ShuffleBranch = "lower"
         if axis == "shuffle_magnitude":
             selected = st.segmented_control(
-                "Shuffle branch",
-                ["Lower", "Upper"],
-                default="Lower",
+                t("live.branch"),
+                ["lower", "upper"],
+                format_func=lambda code: t(f"branch.{code}"),
+                default="lower",
                 key="live_shuffle_branch",
+                help=th("live.branch"),
             )
-            branch = "upper" if selected == "Upper" else "lower"
+            branch = "upper" if selected == "upper" else "lower"
     defaults = _ensure_range(current, axis)
     minimum, maximum = _AXIS_LIMITS[axis]
     with range_col:
         start_col, stop_col, step_col, points_col = st.columns(4)
         with start_col:
             start_raw = st.number_input(
-                "Live start",
+                t("live.start"),
                 min_value=minimum,
                 max_value=maximum,
                 value=None,
                 format="%.7g",
                 key=f"live_start_{axis}",
+                help=th("live.start"),
             )
             assert start_raw is not None
             start = float(start_raw)
         with stop_col:
             stop_raw = st.number_input(
-                "Live stop",
+                t("live.stop"),
                 min_value=minimum,
                 max_value=maximum,
                 value=None,
                 format="%.7g",
                 key=f"live_stop_{axis}",
+                help=th("live.stop"),
             )
             assert stop_raw is not None
             stop = float(stop_raw)
         with step_col:
             step_raw = st.number_input(
-                "Live step",
+                t("live.step"),
                 min_value=max(defaults[2] / 100.0, 1e-8),
                 max_value=max(maximum - minimum, defaults[2]),
                 value=None,
                 format="%.7g",
                 key=f"live_step_{axis}",
+                help=th("live.step"),
             )
             assert step_raw is not None
             step = float(step_raw)
@@ -85,19 +96,17 @@ def render_live_controls(current: SimulationResult) -> LivePreviewConfig:
                 "live_preview_points", min(current.config.spectrum_points, 1600)
             )
             points_raw = st.number_input(
-                "Preview points",
+                t("live.points"),
                 min_value=400,
                 max_value=2000,
                 value=None,
                 step=200,
                 key="live_preview_points",
+                help=th("live.points"),
             )
             assert points_raw is not None
             points = int(points_raw)
-    st.caption(
-        "The slider switches precomputed exact frames locally. Python receives only "
-        "the final frame when the slider is released."
-    )
+    st.caption(t("live.caption"))
     return LivePreviewConfig(
         base=current.config,
         axis=axis,

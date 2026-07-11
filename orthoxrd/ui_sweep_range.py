@@ -8,6 +8,7 @@ import streamlit as st
 
 from orthoxrd.batch_models import SweepResult
 from orthoxrd.config import config_hash
+from orthoxrd.i18n import t, th
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,6 +32,7 @@ def sweep_display_key(result: SweepResult) -> str:
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()[:16]
 
+
 def render_sweep_display_range(result: SweepResult) -> SweepDisplayRange:
     theta_defaults = (
         float(result.steps[0].two_theta_deg[0]),
@@ -51,53 +53,58 @@ def render_sweep_display_range(result: SweepResult) -> SweepDisplayRange:
     st.session_state.setdefault(keys["theta_max"], theta_defaults[1])
     st.session_state.setdefault(keys["axis_min"], axis_defaults[0])
     st.session_state.setdefault(keys["axis_max"], axis_defaults[1])
-    with st.popover("Sweep display range", use_container_width=True):
-        st.caption("Display-only crop. The ZIP always contains the complete simulation window.")
+    with st.popover(t("sweep.display_range"), use_container_width=True):
+        st.caption(t("sweep.display_caption"))
         theta_left, theta_right = st.columns(2)
         with theta_left:
             theta_minimum = float(
                 st.number_input(
-                    "Sweep 2theta minimum",
+                    t("sweep.display_tth_min"),
                     format="%.7g",
                     key=keys["theta_min"],
+                    help=th("sweep.display_tth_min"),
                 )
             )
         with theta_right:
             theta_maximum = float(
                 st.number_input(
-                    "Sweep 2theta maximum",
+                    t("sweep.display_tth_max"),
                     format="%.7g",
                     key=keys["theta_max"],
+                    help=th("sweep.display_tth_max"),
                 )
             )
         axis_left, axis_right = st.columns(2)
         with axis_left:
             axis_minimum = float(
                 st.number_input(
-                    "Sweep axis minimum",
+                    t("sweep.display_axis_min"),
                     format="%.7g",
                     key=keys["axis_min"],
+                    help=th("sweep.display_axis_min"),
                 )
             )
         with axis_right:
             axis_maximum = float(
                 st.number_input(
-                    "Sweep axis maximum",
+                    t("sweep.display_axis_max"),
                     format="%.7g",
                     key=keys["axis_max"],
+                    help=th("sweep.display_axis_max"),
                 )
             )
         st.button(
-            "Reset sweep display range",
+            t("sweep.display_reset"),
             use_container_width=True,
             on_click=_reset,
             args=(keys, theta_defaults, axis_defaults),
+            help=th("sweep.display_reset"),
         )
     if theta_maximum <= theta_minimum:
-        st.error("Sweep 2theta maximum must be greater than the minimum.")
+        st.error(t("sweep.display_tth_error"))
         theta_minimum, theta_maximum = theta_defaults
     if axis_maximum <= axis_minimum:
-        st.error("Sweep axis maximum must be greater than the minimum.")
+        st.error(t("sweep.display_axis_error"))
         axis_minimum, axis_maximum = axis_defaults
     return SweepDisplayRange(
         theta_minimum,

@@ -5,6 +5,7 @@ from typing import cast
 
 import streamlit as st
 
+from orthoxrd.i18n import t, th
 from orthoxrd.models import ElementFraction, ProfileKind, ScatteringMode
 from orthoxrd.presets import TI2448_COMPOSITION
 from orthoxrd.scattering import composition_to_text, parse_composition
@@ -28,20 +29,31 @@ class AdvancedState:
 
 
 def render_advanced_settings() -> AdvancedState:
-    with st.popover("Advanced settings", use_container_width=True):
-        st.markdown("##### Scattering")
+    with st.popover(t("advanced.popover"), use_container_width=True):
+        st.markdown(t("advanced.scattering_section"))
         scattering_mode, composition = _scattering_inputs()
-        st.markdown("##### Simulation window")
+        st.markdown(t("advanced.window_section"))
         pattern = _pattern_inputs()
-        st.markdown("##### Peak profile")
+        st.markdown(t("advanced.profile_section"))
         profile_kind, fwhm, eta = _profile_inputs()
-        st.markdown("##### Applied factors")
-        include_lp = st.checkbox("Lorentz-polarization", value=True, key="advanced_lp")
+        st.markdown(t("advanced.factors_section"))
+        include_lp = st.checkbox(
+            t("advanced.lp"),
+            value=True,
+            key="advanced_lp",
+            help=th("advanced.lp"),
+        )
         include_mult = st.checkbox(
-            "Orthorhombic multiplicity", value=True, key="advanced_multiplicity"
+            t("advanced.multiplicity"),
+            value=True,
+            key="advanced_multiplicity",
+            help=th("advanced.multiplicity"),
         )
         include_volume = st.checkbox(
-            "Scale by unit-cell volume (1/V)", value=True, key="advanced_volume"
+            t("advanced.volume"),
+            value=True,
+            key="advanced_volume",
+            help=th("advanced.volume"),
         )
     return AdvancedState(
         scattering_mode=scattering_mode,
@@ -61,21 +73,22 @@ def render_advanced_settings() -> AdvancedState:
 
 
 def _scattering_inputs() -> tuple[ScatteringMode, tuple[ElementFraction, ...]]:
-    label = st.selectbox(
-        "Atomic scattering",
-        ["Composition form factor", "Unit scatterer F2"],
+    mode = st.selectbox(
+        t("advanced.scattering"),
+        ["composition", "unit"],
+        format_func=lambda code: t(f"advanced.scattering.{code}"),
         key="advanced_scattering",
-        help="Composition mode uses the effective X-ray form factor versus s.",
+        help=th("advanced.scattering"),
     )
-    if label == "Unit scatterer F2":
-        st.caption("All sites use f=1. Best for isolating the analytical F2(y) trend.")
+    if mode == "unit":
+        st.caption(t("advanced.unit_caption"))
         return "unit", ()
     text = st.text_area(
-        "Composition fractions",
+        t("advanced.composition"),
         value=composition_to_text(TI2448_COMPOSITION),
         height=88,
         key="advanced_composition",
-        help="Comma-separated element fractions, for example Ti=0.24, Nb=0.48, Zr=0.28.",
+        help=th("advanced.composition"),
     )
     return "composition", tuple(parse_composition(text))
 
@@ -85,34 +98,57 @@ def _pattern_inputs() -> tuple[float, float, int, float, int]:
     with left:
         minimum = float(
             st.number_input(
-                "Simulation 2theta min (deg)", 0.0, 170.0, 1.0, 0.5, key="advanced_tth_min"
+                t("advanced.tth_min"),
+                0.0,
+                170.0,
+                1.0,
+                0.5,
+                key="advanced_tth_min",
+                help=th("advanced.tth_min"),
             )
         )
-        hkl_max = int(st.slider("Max h, k, l", 1, 12, 6, key="advanced_hkl_max"))
+        hkl_max = int(
+            st.slider(
+                t("advanced.hkl_max"),
+                1,
+                12,
+                6,
+                key="advanced_hkl_max",
+                help=th("advanced.hkl_max"),
+            )
+        )
         points = int(
             st.number_input(
-                "Spectrum points",
+                t("advanced.points"),
                 min_value=200,
                 max_value=10_000,
                 value=4000,
                 step=200,
                 key="advanced_points",
+                help=th("advanced.points"),
             )
         )
     with right:
         maximum = float(
             st.number_input(
-                "Simulation 2theta max (deg)", 1.0, 179.0, 20.0, 0.5, key="advanced_tth_max"
+                t("advanced.tth_max"),
+                1.0,
+                179.0,
+                20.0,
+                0.5,
+                key="advanced_tth_max",
+                help=th("advanced.tth_max"),
             )
         )
         cutoff = float(
             st.number_input(
-                "Table cutoff (%)",
+                t("advanced.cutoff"),
                 min_value=0.0,
                 max_value=100.0,
                 value=0.1,
                 step=0.1,
                 key="advanced_cutoff",
+                help=th("advanced.cutoff"),
             )
         )
     if maximum <= minimum:
@@ -122,34 +158,37 @@ def _pattern_inputs() -> tuple[float, float, int, float, int]:
 
 def _profile_inputs() -> tuple[ProfileKind, float, float]:
     selected = st.selectbox(
-        "Peak shape",
+        t("advanced.profile"),
         ["pseudo_voigt", "gaussian", "lorentzian"],
         key="advanced_profile",
+        help=th("advanced.profile"),
     )
     profile_kind = cast(ProfileKind, selected)
     left, right = st.columns(2)
     with left:
         fwhm = float(
             st.number_input(
-                "FWHM (deg 2theta)",
+                t("advanced.fwhm"),
                 min_value=0.001,
                 max_value=5.0,
                 value=0.06,
                 step=0.005,
                 format="%.4f",
                 key="advanced_fwhm",
+                help=th("advanced.fwhm"),
             )
         )
     with right:
         eta = float(
             st.slider(
-                "Pseudo-Voigt eta",
+                t("advanced.eta"),
                 min_value=0.0,
                 max_value=1.0,
                 value=0.5,
                 step=0.05,
                 key="advanced_eta",
                 disabled=selected != "pseudo_voigt",
+                help=th("advanced.eta"),
             )
         )
     return profile_kind, fwhm, eta
