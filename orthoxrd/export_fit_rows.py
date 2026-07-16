@@ -5,6 +5,10 @@ from typing import Final
 
 from orthoxrd.export_schema import CsvValue
 from orthoxrd.fit_models import FitResult
+from orthoxrd.structure_coordinates import (
+    structure_branch_from_y,
+    structure_coordinate_from_y,
+)
 
 OBSERVATION_EXPORT_FIELDS: Final[tuple[str, ...]] = (
     "row",
@@ -23,8 +27,23 @@ OBSERVATION_EXPORT_FIELDS: Final[tuple[str, ...]] = (
     "included",
     "exclude_reason",
 )
-GRID_SCAN_FIELDS: Final[tuple[str, ...]] = ("y", "scale_s", "chi2")
-REFINE_TRACE_FIELDS: Final[tuple[str, ...]] = ("evaluation", "y", "scale_s", "chi2")
+GRID_SCAN_FIELDS: Final[tuple[str, ...]] = (
+    "y",
+    "scale_s",
+    "chi2",
+    "shuffle_signed",
+    "shuffle_magnitude",
+    "branch",
+)
+REFINE_TRACE_FIELDS: Final[tuple[str, ...]] = (
+    "evaluation",
+    "y",
+    "scale_s",
+    "chi2",
+    "shuffle_signed",
+    "shuffle_magnitude",
+    "branch",
+)
 BEST_POINT_FIELDS: Final[tuple[str, ...]] = (
     "y",
     "scale_s",
@@ -47,7 +66,15 @@ RESIDUAL_AT_BEST_FIELDS: Final[tuple[str, ...]] = (
     "weight",
     "included",
 )
-LOCAL_MINIMA_FIELDS: Final[tuple[str, ...]] = ("grid_index", "y", "scale_s", "chi2")
+LOCAL_MINIMA_FIELDS: Final[tuple[str, ...]] = (
+    "grid_index",
+    "y",
+    "scale_s",
+    "chi2",
+    "shuffle_signed",
+    "shuffle_magnitude",
+    "branch",
+)
 
 
 def observation_export_rows(result: FitResult) -> Iterable[Mapping[str, CsvValue]]:
@@ -74,7 +101,12 @@ def observation_export_rows(result: FitResult) -> Iterable[Mapping[str, CsvValue
 
 def grid_scan_rows(result: FitResult) -> Iterable[Mapping[str, CsvValue]]:
     for point in result.grid_scan:
-        yield {"y": point.y, "scale_s": point.scale_s, "chi2": point.chi2}
+        yield {
+            "y": point.y,
+            "scale_s": point.scale_s,
+            "chi2": point.chi2,
+            **_structure_coordinate_fields(point.y),
+        }
 
 
 def refine_trace_rows(result: FitResult) -> Iterable[Mapping[str, CsvValue]]:
@@ -84,6 +116,7 @@ def refine_trace_rows(result: FitResult) -> Iterable[Mapping[str, CsvValue]]:
             "y": point.y,
             "scale_s": point.scale_s,
             "chi2": point.chi2,
+            **_structure_coordinate_fields(point.y),
         }
 
 
@@ -124,4 +157,14 @@ def local_minima_rows(result: FitResult) -> Iterable[Mapping[str, CsvValue]]:
             "y": candidate.y,
             "scale_s": candidate.scale_s,
             "chi2": candidate.chi2,
+            **_structure_coordinate_fields(candidate.y),
         }
+
+
+def _structure_coordinate_fields(y: float) -> dict[str, CsvValue]:
+    branch = structure_branch_from_y(y)
+    return {
+        "shuffle_signed": structure_coordinate_from_y(y, "signed_shuffle"),
+        "shuffle_magnitude": structure_coordinate_from_y(y, "shuffle_magnitude"),
+        "branch": branch if branch is not None else "reference",
+    }

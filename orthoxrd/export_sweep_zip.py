@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Literal
 
 from orthoxrd.batch_models import SweepResult
+from orthoxrd.export_excel_packages import build_sweep_excel_workbook
 from orthoxrd.export_manifest import manifest_json, sweep_config_json, sweep_hash, sweep_readme
 from orthoxrd.export_origin import (
     ORIGIN_COLUMN_MAP_FIELDS,
@@ -36,13 +37,14 @@ from orthoxrd.export_writer import (
     cleanup_export,
     create_export_path,
     finalize_export,
+    write_binary_entry,
     write_csv_entry,
     write_text_entry,
 )
+from orthoxrd.peak_metrics import PEAK_METRICS, PeakMetric
 from orthoxrd.ui_plot_state import PlotState
 
 SpectrumKind = Literal["model", "local", "global"]
-PeakMetric = Literal["F2", "I_model", "I_rel_global"]
 
 BATCH_EXPORT_FILES = (
     "peak_evolution_long.csv",
@@ -52,9 +54,8 @@ BATCH_EXPORT_FILES = (
     "sweep_steps.csv",
     "series_map.csv",
     "spectra_matrix_model.csv",
-    "peak_evolution_matrix_F2.csv",
-    "peak_evolution_matrix_I_model.csv",
-    "peak_evolution_matrix_I_rel_global.csv",
+    *(f"peak_evolution_matrix_{metric}.csv" for metric in PEAK_METRICS),
+    "analysis.xlsx",
     "config.json",
     "README.md",
     "plot_state.json",
@@ -68,10 +69,8 @@ _SPECTRUM_MATRICES: tuple[tuple[str, SpectrumKind], ...] = (
     ("spectra_matrix_global.csv", "global"),
     ("spectra_matrix_model.csv", "model"),
 )
-_PEAK_MATRICES: tuple[tuple[str, PeakMetric], ...] = (
-    ("peak_evolution_matrix_F2.csv", "F2"),
-    ("peak_evolution_matrix_I_model.csv", "I_model"),
-    ("peak_evolution_matrix_I_rel_global.csv", "I_rel_global"),
+_PEAK_MATRICES: tuple[tuple[str, PeakMetric], ...] = tuple(
+    (f"peak_evolution_matrix_{metric}.csv", metric) for metric in PEAK_METRICS
 )
 
 
@@ -80,6 +79,7 @@ def write_sweep_payload(
     result: SweepResult,
     metadata: dict[str, ExportFileMeta],
     plot_state: PlotState | SweepExportPlotState | None = None,
+    excel_workbook: bytes | None = None,
 ) -> None:
     metadata["peak_evolution_long.csv"] = write_csv_entry(
         archive, "peak_evolution_long.csv", PEAK_EVOLUTION_V2_FIELDS, peak_evolution_rows(result)
@@ -101,6 +101,11 @@ def write_sweep_payload(
         metadata[name] = write_csv_entry(
             archive, name, peak_matrix_fields(result), peak_matrix_rows(result, metric)
         )
+    metadata["analysis.xlsx"] = write_binary_entry(
+        archive,
+        "analysis.xlsx",
+        build_sweep_excel_workbook(result) if excel_workbook is None else excel_workbook,
+    )
     metadata["config.json"] = write_text_entry(
         archive, "config.json", sweep_config_json(result)
     )

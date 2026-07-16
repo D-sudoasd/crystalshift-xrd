@@ -6,6 +6,7 @@ from orthoxrd.config import config_hash
 from orthoxrd.export_writer import PreparedExport
 from orthoxrd.export_zip import prepare_current_export
 from orthoxrd.i18n import ensure_language_state, render_language_toggle, t, th
+from orthoxrd.scattering import composition_to_text
 from orthoxrd.simulation import SimulationResult
 from orthoxrd.structure_factor import signed_shuffle_from_y
 from orthoxrd.ui_config import build_simulation_config, calculate_cached
@@ -39,6 +40,7 @@ def main() -> None:
     try:
         advanced = _render_title_and_advanced()
         radiation, structure = _render_core_parameters()
+        _render_required_input_review()
         config = build_simulation_config(structure, radiation, advanced)
     except ValueError as exc:
         st.error(str(exc))
@@ -106,11 +108,20 @@ def _render_core_parameters():
     return radiation, structure
 
 
+def _render_required_input_review() -> None:
+    st.markdown(t("inputs.required_review"), unsafe_allow_html=True)
+
+
 def _prepare_current_export(result: SimulationResult) -> PreparedExport:
     return prepare_current_export(result, plot_state_from_session(result))
 
 
-def _render_active_configuration(structure, radiation, digest: str, result) -> None:
+def _render_active_configuration(
+    structure,
+    radiation,
+    digest: str,
+    result: SimulationResult,
+) -> None:
     lattice = structure.lattice
     signed = signed_shuffle_from_y(structure.y)
     summary_col, export_col = st.columns((6.0, 1.45), vertical_alignment="center")
@@ -138,4 +149,24 @@ def _render_active_configuration(structure, radiation, digest: str, result) -> N
                 f"{int(state.y_auto)}:{state.y_minimum:.12g}:{state.y_maximum:.12g}"
             ),
         )
+    config = result.config
+    composition = (
+        composition_to_text(config.composition)
+        if config.scattering_mode == "composition"
+        else t("app.active_model.composition_na")
+    )
+    st.caption(
+        t(
+            "app.active_model_details",
+            scattering=t(f"advanced.scattering.{config.scattering_mode}"),
+            composition=composition,
+            tth_min=config.two_theta_min,
+            tth_max=config.two_theta_max,
+            profile=t(f"advanced.profile.{config.profile_kind}"),
+            fwhm=config.fwhm_deg,
+            lp=t("common.on") if config.include_lorentz_polarization else t("common.off"),
+            multiplicity=t("common.on") if config.include_multiplicity else t("common.off"),
+            volume=t("common.on") if config.include_cell_volume else t("common.off"),
+        )
+    )
     st.divider()

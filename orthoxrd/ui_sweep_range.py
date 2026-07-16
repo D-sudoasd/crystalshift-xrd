@@ -9,6 +9,10 @@ import streamlit as st
 from orthoxrd.batch_models import SweepResult
 from orthoxrd.config import config_hash
 from orthoxrd.i18n import t, th
+from orthoxrd.structure_coordinates import (
+    StructureAxis,
+    structure_coordinate_from_y,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -19,12 +23,16 @@ class SweepDisplayRange:
     axis_maximum: float
 
 
-def sweep_display_key(result: SweepResult) -> str:
+def sweep_display_key(
+    result: SweepResult,
+    display_axis: StructureAxis | None = None,
+) -> str:
     first = result.steps[0]
+    axis_values = _axis_values(result, display_axis)
     payload = {
         "config_hash": config_hash(result.base_config),
-        "axis": first.step.axis,
-        "axis_values": [step.step.axis_value for step in result.steps],
+        "axis": display_axis or first.step.axis,
+        "axis_values": axis_values,
         "two_theta_start": float(first.two_theta_deg[0]),
         "two_theta_stop": float(first.two_theta_deg[-1]),
         "spectrum_points": len(first.two_theta_deg),
@@ -33,16 +41,19 @@ def sweep_display_key(result: SweepResult) -> str:
     return hashlib.sha256(encoded).hexdigest()[:16]
 
 
-def render_sweep_display_range(result: SweepResult) -> SweepDisplayRange:
+def render_sweep_display_range(
+    result: SweepResult,
+    display_axis: StructureAxis | None = None,
+) -> SweepDisplayRange:
     theta_defaults = (
         float(result.steps[0].two_theta_deg[0]),
         float(result.steps[0].two_theta_deg[-1]),
     )
-    axis_values = [step.step.axis_value for step in result.steps]
+    axis_values = _axis_values(result, display_axis)
     axis_defaults = (min(axis_values), max(axis_values))
     if axis_defaults[0] == axis_defaults[1]:
         axis_defaults = (axis_defaults[0] - 0.5, axis_defaults[1] + 0.5)
-    namespace = sweep_display_key(result)
+    namespace = sweep_display_key(result, display_axis)
     keys = {
         "theta_min": f"sweep_display_theta_min_{namespace}",
         "theta_max": f"sweep_display_theta_max_{namespace}",
@@ -112,6 +123,18 @@ def render_sweep_display_range(result: SweepResult) -> SweepDisplayRange:
         axis_minimum,
         axis_maximum,
     )
+
+
+def _axis_values(
+    result: SweepResult,
+    display_axis: StructureAxis | None,
+) -> list[float]:
+    if display_axis is None:
+        return [step.step.axis_value for step in result.steps]
+    return [
+        structure_coordinate_from_y(step.step.y, display_axis)
+        for step in result.steps
+    ]
 
 
 def _reset(

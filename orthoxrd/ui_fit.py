@@ -4,20 +4,34 @@ import hashlib
 import json
 from dataclasses import asdict
 from pathlib import Path
+from typing import cast
 
 import streamlit as st
 
 from orthoxrd.config import SimulationConfig
 from orthoxrd.export_writer import PreparedExport
 from orthoxrd.export_zip import prepare_fit_export
-from orthoxrd.fit import run_discrete_peak_fit
-from orthoxrd.fit_models import FitError, FitOptions, FitResult
-from orthoxrd.fit_observations import observation_csv_template, parse_observation_csv
+from orthoxrd.fit import (
+    run_discrete_peak_fit,
+    validate_discrete_peak_fit_observations,
+)
+from orthoxrd.fit_models import FitError, FitOptions, FitResult, ObservableMode
+from orthoxrd.fit_observations import (
+    observation_csv_editor_template,
+    observation_csv_template,
+    parse_observation_csv,
+)
 from orthoxrd.i18n import t, th
-from orthoxrd.structure_factor import signed_shuffle_from_y
+from orthoxrd.scattering import composition_to_text
+from orthoxrd.structure_coordinates import StructureAxis
 from orthoxrd.ui_export import discard_prepared
-from orthoxrd.ui_plot_fit import plot_chi2_curve
-from orthoxrd.ui_structure import SHUFFLE_KEY, Y_KEY
+from orthoxrd.ui_plot_fit import (
+    plot_chi2_curve,
+    plot_observed_vs_fitted,
+    plot_residual_contributions,
+    plot_scale_curve,
+)
+from orthoxrd.ui_structure import set_structure_y_state
 from orthoxrd.ui_style import kpi_grid
 
 RESULT_KEY = "fit_result"
@@ -36,15 +50,14 @@ MAX_OBS_UPLOAD_ROWS = 500
 def consume_pending_structure_apply() -> None:
     """Commit deferred Apply y* before structure widgets are instantiated.
 
-    Streamlit forbids mutating ``structure_y`` / ``structure_shuffle`` after those
-    number_input widgets exist in the same run, so Apply only queues the value.
+    Streamlit forbids mutating structure widgets after they exist in the same run,
+    so Apply only queues the value.
     Call this once near the top of ``main`` before ``render_structure_panel``.
     """
     if APPLY_PENDING_Y_KEY not in st.session_state:
         return
     y_star = float(st.session_state.pop(APPLY_PENDING_Y_KEY))
-    st.session_state[Y_KEY] = y_star
-    st.session_state[SHUFFLE_KEY] = abs(signed_shuffle_from_y(y_star))
+    set_structure_y_state(y_star)
 
 
 def render_fit_view(config: SimulationConfig) -> None:
@@ -55,9 +68,22 @@ def render_fit_view(config: SimulationConfig) -> None:
     if flash_y is not None:
         st.success(t("fit.apply_success", y=float(flash_y)))
 
+    _render_fixed_model_context(config)
+    observable_mode = _render_observable_mode()
     observations_text = _render_observation_inputs(config)
-    options = _render_fit_options()
+    options = _render_fit_options(observable_mode)
     options_valid = options is not None
+    observation_count, observation_error = _validate_observation_input(
+        observations_text,
+        config=config,
+        options=options,
+    )
+    observations_ready = observation_error is None and observation_count >= 2
+    if observation_error is not None:
+        st.warning(t("fit.obs.invalid", error=observation_error))
+    elif not observations_ready:
+        st.info(t("fit.obs.need_two", count=observation_count))
+
     signature = (
         _fit_signature(config, options, observations_text) if options is not None else ""
     )
@@ -67,7 +93,7 @@ def render_fit_view(config: SimulationConfig) -> None:
         type="primary",
         key="run_fit",
         use_container_width=True,
-        disabled=not options_valid,
+        disabled=not options_valid or not observations_ready,
         help=th("fit.run"),
     )
     if run_clicked and options is not None:
@@ -91,15 +117,58 @@ def render_fit_view(config: SimulationConfig) -> None:
         for warning in result.warnings:
             st.warning(warning)
 
-    st.plotly_chart(
-        plot_chi2_curve(result),
-        width="stretch",
-        config={"displaylogo": False},
-    )
+    _render_diagnostics(result)
     _render_local_minima(result)
     _render_residuals(result)
     _render_apply(result, stale)
     _render_export(result, signature, stale)
+
+
+def _render_fixed_model_context(config: SimulationConfig) -> None:
+    """Keep the inputs held fixed by the inverse fit visible beside its controls."""
+    composition = (
+        composition_to_text(config.composition)
+        if config.scattering_mode == "composition"
+        else t("app.active_model.composition_na")
+    )
+    radiation = ", ".join(
+        f"{line.label}: λ={line.wavelength_a:.7g} Å, w={line.weight:.6g}"
+        for line in config.lines
+    )
+    st.markdown(t("fit.context.header"))
+    st.caption(
+        t(
+            "fit.context.details",
+            a=config.lattice.a,
+            b=config.lattice.b,
+            c=config.lattice.c,
+            radiation=radiation,
+            scattering=t(f"advanced.scattering.{config.scattering_mode}"),
+            composition=composition,
+            tth_min=config.two_theta_min,
+            tth_max=config.two_theta_max,
+            hkl_max=config.hkl_max,
+            lp=t("common.on") if config.include_lorentz_polarization else t("common.off"),
+            multiplicity=t("common.on") if config.include_multiplicity else t("common.off"),
+            volume=t("common.on") if config.include_cell_volume else t("common.off"),
+        )
+    )
+    st.caption(t("fit.context.profile_excluded"))
+
+
+def _render_observable_mode() -> ObservableMode:
+    st.markdown(t("fit.observable.header"))
+    value = st.selectbox(
+        t("fit.observable_mode"),
+        ["peak_area", "peak_height"],
+        format_func=lambda code: t(f"fit.mode.{code}"),
+        key="fit_observable_mode",
+        help=th("fit.observable_mode"),
+    )
+    observable_mode = cast(ObservableMode, value)
+    if observable_mode == "peak_height":
+        st.info(t("fit.peak_height_note"))
+    return observable_mode
 
 
 def _render_observation_inputs(config: SimulationConfig) -> str:
@@ -150,7 +219,7 @@ def _render_observation_inputs(config: SimulationConfig) -> str:
                         st.session_state[OBS_UPLOAD_TOKEN_KEY] = token
                         st.session_state[OBS_TEXT_KEY] = decoded
     if OBS_TEXT_KEY not in st.session_state:
-        st.session_state[OBS_TEXT_KEY] = observation_csv_template()
+        st.session_state[OBS_TEXT_KEY] = observation_csv_editor_template()
 
     text = st.text_area(
         t("fit.obs.editor"),
@@ -178,17 +247,35 @@ def _count_csv_data_rows(text: str) -> int:
     return max(0, len(lines) - 1)
 
 
-def _render_fit_options() -> FitOptions | None:
+def _validate_observation_input(
+    text: str,
+    *,
+    config: SimulationConfig,
+    options: FitOptions | None,
+) -> tuple[int, str | None]:
+    """Return the valid observation count and a concise eager-validation error."""
+    if _count_csv_data_rows(text) == 0:
+        return 0, None
+    try:
+        observations = parse_observation_csv(text)
+    except (FitError, ValueError) as exc:
+        return 0, str(exc)
+    if len(observations) >= 2 and options is not None:
+        try:
+            matched = validate_discrete_peak_fit_observations(
+                config,
+                observations,
+                options,
+            )
+        except (FitError, ValueError) as exc:
+            return 0, str(exc)
+        return sum(1 for item in matched if item.included), None
+    return len(observations), None
+
+
+def _render_fit_options(observable_mode: ObservableMode) -> FitOptions | None:
     st.markdown(t("fit.options.header"))
-    mode_col, weight_col = st.columns(2)
-    with mode_col:
-        observable_mode = st.selectbox(
-            t("fit.observable_mode"),
-            ["peak_area", "peak_height"],
-            format_func=lambda code: t(f"fit.mode.{code}"),
-            key="fit_observable_mode",
-            help=th("fit.observable_mode"),
-        )
+    weight_col, note_col = st.columns(2)
     with weight_col:
         weight_mode = st.selectbox(
             t("fit.weight_mode"),
@@ -197,6 +284,8 @@ def _render_fit_options() -> FitOptions | None:
             key="fit_weight_mode",
             help=th("fit.weight_mode"),
         )
+    with note_col:
+        st.caption(t("fit.options.scan_note"))
     y_start_col, y_stop_col, grid_col = st.columns(3)
     with y_start_col:
         y_start = float(
@@ -236,13 +325,11 @@ def _render_fit_options() -> FitOptions | None:
                 help=th("fit.grid_points"),
             )
         )
-    if observable_mode == "peak_height":
-        st.info(t("fit.peak_height_note"))
     if y_stop < y_start:
         st.error(t("fit.err.y_range"))
         return None
     return FitOptions(
-        observable_mode=observable_mode,  # type: ignore[arg-type]
+        observable_mode=observable_mode,
         weight_mode=weight_mode,  # type: ignore[arg-type]
         y_start=y_start,
         y_stop=y_stop,
@@ -289,9 +376,56 @@ def _render_summary(result: FitResult) -> None:
             (t("fit.kpi.shuffle_mag"), f"{best.shuffle_magnitude:.6f}"),
             (t("fit.kpi.source"), best.source),
             (t("fit.kpi.peaks"), f"{included}/{len(result.matched)}"),
-            (t("fit.kpi.mode"), result.options.observable_mode),
+            (t("fit.kpi.mode"), t(f"fit.mode.{result.options.observable_mode}")),
         ]
     )
+
+
+def _render_diagnostics(result: FitResult) -> None:
+    st.markdown(t("fit.diagnostics.header"))
+    raw_axis = st.segmented_control(
+        t("fit.display_coordinate"),
+        options=["y", "signed_shuffle", "shuffle_magnitude"],
+        default="y",
+        format_func=lambda code: t(f"axis.{code}"),
+        key="fit_display_axis",
+        help=th("fit.display_coordinate"),
+    )
+    display_axis = cast(StructureAxis, raw_axis or "y")
+    if display_axis == "shuffle_magnitude":
+        st.caption(t("fit.display_coordinate_magnitude_note"))
+
+    objective_col, scale_col = st.columns(2)
+    with objective_col:
+        st.caption(t("fit.diagnostics.chi2"))
+        st.plotly_chart(
+            plot_chi2_curve(result, display_axis),
+            width="stretch",
+            config={"displaylogo": False},
+        )
+    with scale_col:
+        st.caption(t("fit.diagnostics.scale"))
+        st.plotly_chart(
+            plot_scale_curve(result, display_axis),
+            width="stretch",
+            config={"displaylogo": False},
+        )
+
+    parity_col, contribution_col = st.columns(2)
+    with parity_col:
+        st.caption(t("fit.diagnostics.parity"))
+        st.plotly_chart(
+            plot_observed_vs_fitted(result),
+            width="stretch",
+            config={"displaylogo": False},
+        )
+    with contribution_col:
+        st.caption(t("fit.diagnostics.contributions"))
+        st.plotly_chart(
+            plot_residual_contributions(result),
+            width="stretch",
+            config={"displaylogo": False},
+        )
 
 
 def _render_local_minima(result: FitResult) -> None:

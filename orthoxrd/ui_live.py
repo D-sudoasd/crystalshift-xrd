@@ -21,7 +21,6 @@ from orthoxrd.live import (
 from orthoxrd.live_component import render_live_component
 from orthoxrd.models import RadiationLine
 from orthoxrd.simulation import SimulationResult
-from orthoxrd.structure_factor import signed_shuffle_from_y, y_from_shuffle_magnitude
 from orthoxrd.ui_live_controls import render_live_controls
 from orthoxrd.ui_live_export import (
     invalidate_live_export,
@@ -34,7 +33,13 @@ from orthoxrd.ui_radiation import (
     WAVELENGTH_KEY,
     install_custom_radiation_template,
 )
-from orthoxrd.ui_structure import A_KEY, B_KEY, C_KEY, SHUFFLE_KEY, Y_KEY
+from orthoxrd.ui_structure import (
+    A_KEY,
+    B_KEY,
+    C_KEY,
+    set_structure_shuffle_state,
+    set_structure_y_state,
+)
 
 LIVE_RESULT_KEY: Final = "live_preview_result"
 LIVE_BASELINE_KEY: Final = "live_baseline_index"
@@ -216,14 +221,9 @@ def _apply_axis_value(
 ) -> None:
     match axis:
         case "y":
-            st.session_state[Y_KEY] = value
-            st.session_state[SHUFFLE_KEY] = abs(signed_shuffle_from_y(value))
+            set_structure_y_state(value)
         case "shuffle" | "shuffle_magnitude":
-            st.session_state[SHUFFLE_KEY] = value
-            st.session_state[Y_KEY] = y_from_shuffle_magnitude(
-                value,
-                upper_branch=branch == "upper",
-            )
+            set_structure_shuffle_state(value, branch)
         case "a_A":
             st.session_state[A_KEY] = value
         case "b_A":

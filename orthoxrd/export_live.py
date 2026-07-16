@@ -13,6 +13,7 @@ import numpy as np
 
 import orthoxrd.batch as batch_engine
 from orthoxrd.batch_models import SweepResult, SweepStep, TrajectoryConfig
+from orthoxrd.export_excel_packages import build_live_excel_workbook
 from orthoxrd.export_manifest import manifest_json
 from orthoxrd.export_schema import CsvValue
 from orthoxrd.export_sweep_zip import BATCH_EXPORT_FILES, write_sweep_payload
@@ -69,7 +70,21 @@ def prepare_live_export(
     path = create_export_path()
     metadata: dict[str, ExportFileMeta] = {}
     with zipfile.ZipFile(path, mode="w", compression=zipfile.ZIP_DEFLATED) as archive:
-        write_sweep_payload(archive, sweep, metadata, plot_state)
+        workbook = build_live_excel_workbook(
+            result,
+            sweep,
+            index,
+            baseline,
+            LIVE_COMPARISON_FIELDS,
+            comparison_rows(result, index, baseline),
+        )
+        write_sweep_payload(
+            archive,
+            sweep,
+            metadata,
+            plot_state,
+            excel_workbook=workbook,
+        )
         metadata["live_state.json"] = write_text_entry(
             archive, "live_state.json", _live_state_json(result, index, baseline)
         )

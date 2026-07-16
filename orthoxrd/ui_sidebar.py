@@ -30,6 +30,7 @@ class AdvancedState:
 
 def render_advanced_settings() -> AdvancedState:
     with st.popover(t("advanced.popover"), use_container_width=True):
+        st.caption(t("advanced.intro"))
         st.markdown(t("advanced.scattering_section"))
         scattering_mode, composition = _scattering_inputs()
         st.markdown(t("advanced.window_section"))
@@ -160,6 +161,7 @@ def _profile_inputs() -> tuple[ProfileKind, float, float]:
     selected = st.selectbox(
         t("advanced.profile"),
         ["pseudo_voigt", "gaussian", "lorentzian"],
+        format_func=lambda code: t(f"advanced.profile.{code}"),
         key="advanced_profile",
         help=th("advanced.profile"),
     )

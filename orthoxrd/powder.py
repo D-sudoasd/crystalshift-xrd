@@ -132,6 +132,7 @@ def calculate_reflections(
                         applied_multiplicity=applied_multiplicity,
                         applied_lorentz_polarization=applied_lp,
                         applied_volume_factor=applied_volume,
+                        cell_volume_a3=lattice.volume_a3,
                     )
                 )
 

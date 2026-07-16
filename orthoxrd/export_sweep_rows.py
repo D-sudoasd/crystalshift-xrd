@@ -6,10 +6,9 @@ from typing import Literal
 from orthoxrd.batch import SweepResult
 from orthoxrd.export_current_rows import q_d
 from orthoxrd.export_schema import CsvValue
-from orthoxrd.models import Reflection
+from orthoxrd.peak_metrics import PeakMetric, peak_metric_value
 from orthoxrd.powder import wavelength_a_to_energy_kev
 
-PeakMetric = Literal["F2", "I_model", "I_rel_global"]
 SpectrumKind = Literal["model", "local", "global"]
 
 
@@ -100,6 +99,28 @@ def peak_evolution_rows(result: SweepResult) -> Iterator[Mapping[str, CsvValue]]
                 "applied_LP": reflection.applied_lorentz_polarization,
                 "applied_volume_factor": reflection.applied_volume_factor,
                 "I_model_peak": reflection.intensity_model,
+                "theta_deg": reflection.theta_deg,
+                "g_A_inv": reflection.g_a_inv,
+                "sin_theta": reflection.sin_theta,
+                "cos_theta": reflection.cos_theta,
+                "sin_theta_over_lambda_1_over_A": (
+                    reflection.sin_theta_over_lambda_a_inv
+                ),
+                "sin2_theta_over_lambda2_1_over_A2": (
+                    reflection.sin2_theta_over_lambda2_a_inv2
+                ),
+                "F_abs": reflection.structure_factor_abs,
+                "cell_volume_A3": reflection.cell_volume_a3,
+                "multiplicity_structure_factor_sq": reflection.n_f2,
+                "theoretical_intensity_unscaled": reflection.n_f2_lp,
+                "material_scattering_factor_R_hkl": reflection.reference_r_hkl_with_lp,
+                "material_scattering_factor_R_hkl_no_lp": reflection.reference_r_hkl_no_lp,
+                "inverse_material_scattering_factor_1_over_R_hkl": _csv_optional(
+                    reflection.inverse_reference_r_hkl_with_lp
+                ),
+                "inverse_material_scattering_factor_1_over_R_hkl_no_lp": _csv_optional(
+                    reflection.inverse_reference_r_hkl_no_lp
+                ),
             }
 
 
@@ -162,7 +183,11 @@ def peak_matrix_rows(
     series = _series_ids(result)
     for step_result in result.steps:
         values = {
-            peak.series_id: _peak_metric(result, peak.reflection, metric)
+            peak.series_id: peak_metric_value(
+                peak.reflection,
+                metric,
+                peak_global_max=result.peak_global_max,
+            )
             for peak in step_result.peaks
         }
         row: dict[str, CsvValue] = {"step_id": step_result.step.step_id}
@@ -180,18 +205,6 @@ def _series_ids(result: SweepResult) -> tuple[str, ...]:
     )
 
 
-def _peak_metric(
-    result: SweepResult,
-    reflection: Reflection,
-    metric: PeakMetric,
-) -> float:
-    if metric == "F2":
-        return reflection.structure_factor_squared
-    if metric == "I_model":
-        return reflection.intensity_model
-    return _peak_global(result, reflection.intensity_model)
-
-
 def _axis(result: SweepResult) -> str:
     return result.steps[0].step.axis
 
@@ -203,3 +216,7 @@ def _peak_global(result: SweepResult, value: float) -> float:
 def _spectrum_global(result: SweepResult, value: float) -> float:
     maximum = result.spectrum_global_max
     return value / maximum * 100.0 if maximum > 0 else 0.0
+
+
+def _csv_optional(value: float | None) -> float | str:
+    return "" if value is None else value

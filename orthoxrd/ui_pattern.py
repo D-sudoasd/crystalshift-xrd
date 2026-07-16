@@ -16,11 +16,13 @@ from orthoxrd.ui_plot_pattern import (
     plot_pattern,
 )
 from orthoxrd.ui_plot_state import render_plot_state
+from orthoxrd.ui_structure_context import structure_context_caption
 from orthoxrd.ui_tables import rows_to_csv
 
 
 def render_pattern_view(result: SimulationResult) -> None:
     st.subheader(t("pattern.title"))
+    st.caption(structure_context_caption(result.config.y))
     mode = st.segmented_control(
         t("pattern.mode"),
         ["static", "live"],
@@ -113,3 +115,4 @@ def _downloads(result: SimulationResult) -> None:
             use_container_width=True,
             help=th("pattern.download_peaks"),
         )
+    st.caption(t("export.csv_excel_hint.current"))

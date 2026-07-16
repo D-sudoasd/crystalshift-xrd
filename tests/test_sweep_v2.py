@@ -294,3 +294,181 @@ def test_sweep_display_key_is_stable_and_result_scoped() -> None:
 
     assert sweep_display_key(first) == sweep_display_key(same)
     assert sweep_display_key(first) != sweep_display_key(energy)
+
+
+@pytest.mark.parametrize(
+    "metric",
+    ["F2", "N_F2", "R_hkl_with_LP", "R_hkl_no_LP", "I_model", "I_rel_global"],
+)
+def test_y_sweep_peak_evolution_supports_reference_factor_metrics(metric: str) -> None:
+    from typing import cast
+
+    from orthoxrd.ui_plot_sweep import PeakMetric, plot_peak_evolution
+
+    result = generate_sweep(
+        SweepConfig.from_simulation(
+            _base(), axis="y", start=0.220, stop=0.222, step=0.001
+        )
+    )
+    series_id = next(
+        peak.series_id
+        for peak in result.steps[0].peaks
+        if peak.reflection.hkl_label == "020"
+    )
+
+    figure = plot_peak_evolution(result, [series_id], cast(PeakMetric, metric))
+
+    assert len(figure.data) == 1
+    assert list(figure.data[0].x) == pytest.approx([0.220, 0.221, 0.222])
+    expected = []
+    for step_result in result.steps:
+        peak = next(item for item in step_result.peaks if item.series_id == series_id)
+        reflection = peak.reflection
+        n_f2 = reflection.multiplicity * reflection.structure_factor_squared
+        expected.append(
+            {
+                "F2": reflection.structure_factor_squared,
+                "N_F2": n_f2,
+                "R_hkl_with_LP": (
+                    n_f2
+                    * reflection.lorentz_polarization
+                    / step_result.step.lattice.volume_a3**2
+                ),
+                "R_hkl_no_LP": n_f2 / step_result.step.lattice.volume_a3**2,
+                "I_model": reflection.intensity_model,
+                "I_rel_global": (
+                    reflection.intensity_model / result.peak_global_max * 100.0
+                    if result.peak_global_max > 0
+                    else 0.0
+                ),
+            }[metric]
+        )
+    assert list(figure.data[0].y) == pytest.approx(expected)
+    assert expected[0] != pytest.approx(expected[-1])
+
+
+def test_structure_sweep_can_switch_display_coordinate_without_recalculation() -> None:
+    from orthoxrd.export_rows import sweep_step_rows
+    from orthoxrd.ui_plot_sweep import (
+        plot_peak_evolution,
+        plot_sweep_heatmap,
+        sweep_display_axis_options,
+    )
+
+    result = generate_sweep(
+        SweepConfig.from_simulation(
+            _base(), axis="y", start=0.22, stop=0.24, step=0.01
+        )
+    )
+    rows_before = list(sweep_step_rows(result))
+
+    assert sweep_display_axis_options(result) == (
+        "y",
+        "signed_shuffle",
+        "shuffle_magnitude",
+    )
+    heatmap = plot_sweep_heatmap(result, "global", display_axis="signed_shuffle")
+    assert tuple(heatmap.data[0].y) == pytest.approx((-0.06, -0.04, -0.02))
+
+    series_id = result.steps[0].peaks[0].series_id
+    evolution = plot_peak_evolution(
+        result,
+        [series_id],
+        "F2",
+        display_axis="shuffle_magnitude",
+    )
+    assert tuple(evolution.data[0].x) == pytest.approx((0.06, 0.04, 0.02))
+    assert list(sweep_step_rows(result)) == rows_before
+
+
+def test_cross_branch_y_sweep_does_not_offer_ambiguous_magnitude_axis() -> None:
+    from orthoxrd.ui_plot_sweep import (
+        plot_sweep_heatmap,
+        sweep_display_axis_options,
+    )
+
+    result = generate_sweep(
+        SweepConfig.from_simulation(
+            _base(), axis="y", start=0.24, stop=0.26, step=0.01
+        )
+    )
+
+    assert sweep_display_axis_options(result) == ("y", "signed_shuffle")
+    with pytest.raises(ValueError, match=r"crosses y=0\.25"):
+        plot_sweep_heatmap(result, "global", display_axis="shuffle_magnitude")
+
+
+def test_sweep_display_range_namespace_includes_projected_coordinate() -> None:
+    from orthoxrd.ui_sweep_range import sweep_display_key
+
+    result = generate_sweep(
+        SweepConfig.from_simulation(
+            _base(), axis="y", start=0.22, stop=0.24, step=0.01
+        )
+    )
+
+    assert sweep_display_key(result, "y") != sweep_display_key(
+        result, "signed_shuffle"
+    )
+
+
+@pytest.mark.parametrize(
+    "trajectory_rows",
+    [
+        "first,0.22\nsecond,0.23\nthird,0.24",
+        "first,0.24\nsecond,0.23\nthird,0.22",
+    ],
+)
+def test_strictly_monotonic_trajectory_can_use_structure_display_coordinates(
+    trajectory_rows: str,
+) -> None:
+    from orthoxrd.export_rows import sweep_step_rows
+    from orthoxrd.ui_plot_sweep import (
+        plot_sweep_heatmap,
+        sweep_display_axis_options,
+    )
+
+    result = generate_sweep(
+        parse_trajectory_csv(f"step_label,y\n{trajectory_rows}\n", _base())
+    )
+    exported_before = list(sweep_step_rows(result))
+
+    assert sweep_display_axis_options(result) == (
+        "y",
+        "signed_shuffle",
+        "shuffle_magnitude",
+    )
+    heatmap = plot_sweep_heatmap(result, "global", display_axis="signed_shuffle")
+    expected_y = [step.step.shuffle_signed for step in result.steps]
+    assert list(heatmap.data[0].y) == pytest.approx(expected_y)
+
+    exported_after = list(sweep_step_rows(result))
+    assert exported_after == exported_before
+    assert [row["sweep_axis"] for row in exported_after] == ["trajectory"] * 3
+    assert [row["axis_value"] for row in exported_after] == pytest.approx([0.0, 1.0, 2.0])
+
+
+@pytest.mark.parametrize(
+    "trajectory_rows",
+    [
+        "first,0.22\nsecond,0.22\nthird,0.24",
+        "first,0.22\nsecond,0.24\nthird,0.23",
+    ],
+)
+def test_repeated_or_nonmonotonic_trajectory_falls_back_to_canonical_axis(
+    trajectory_rows: str,
+) -> None:
+    from orthoxrd.ui_plot_sweep import (
+        plot_sweep_heatmap,
+        sweep_display_axis_options,
+    )
+
+    result = generate_sweep(
+        parse_trajectory_csv(f"step_label,y\n{trajectory_rows}\n", _base())
+    )
+
+    assert sweep_display_axis_options(result) == ()
+    canonical = plot_sweep_heatmap(result, "global")
+    assert list(canonical.data[0].y) == pytest.approx([0.0, 1.0, 2.0])
+    with pytest.raises(ValueError, match="not a safe display coordinate"):
+        plot_sweep_heatmap(result, "global", display_axis="y")

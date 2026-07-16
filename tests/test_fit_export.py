@@ -8,6 +8,8 @@ import json
 import zipfile
 from pathlib import Path
 
+import pytest
+
 from orthoxrd.batch import SweepConfig, generate_sweep
 from orthoxrd.config import SimulationConfig
 from orthoxrd.export_fit_rows import (
@@ -36,6 +38,7 @@ from orthoxrd.fit_models import FitOptions, PeakObservation
 from orthoxrd.models import LatticeParameters, RadiationLine
 from orthoxrd.powder import calculate_reflections
 from orthoxrd.simulation import calculate_simulation
+from tests.xlsx_assertions import xlsx_sheet_cells, xlsx_sheet_names
 
 
 def _config() -> SimulationConfig:
@@ -133,6 +136,9 @@ def test_prepare_fit_export_members_and_key_columns() -> None:
             csv.DictReader(io.StringIO(archive.read("observations.csv").decode("utf-8")))
         )
         grid = list(csv.DictReader(io.StringIO(archive.read("grid_scan.csv").decode("utf-8"))))
+        refine = list(
+            csv.DictReader(io.StringIO(archive.read("refine_trace.csv").decode("utf-8")))
+        )
         best_point = list(
             csv.DictReader(io.StringIO(archive.read("best_point.csv").decode("utf-8")))
         )
@@ -145,6 +151,7 @@ def test_prepare_fit_export_members_and_key_columns() -> None:
         best_fit = json.loads(archive.read("best_fit.json"))
         config_payload = json.loads(archive.read("config.json"))
         manifest = json.loads(archive.read("manifest.json"))
+        workbook = archive.read("analysis.xlsx")
         readme = archive.read("README.md").decode("utf-8")
 
         # Headers stay stable (order matters for tooling).
@@ -173,6 +180,32 @@ def test_prepare_fit_export_members_and_key_columns() -> None:
     assert best_header == list(BEST_POINT_FIELDS)
     assert residual_header == list(RESIDUAL_AT_BEST_FIELDS)
     assert minima_header == list(LOCAL_MINIMA_FIELDS)
+    assert GRID_SCAN_FIELDS == (
+        "y",
+        "scale_s",
+        "chi2",
+        "shuffle_signed",
+        "shuffle_magnitude",
+        "branch",
+    )
+    assert REFINE_TRACE_FIELDS == (
+        "evaluation",
+        "y",
+        "scale_s",
+        "chi2",
+        "shuffle_signed",
+        "shuffle_magnitude",
+        "branch",
+    )
+    assert LOCAL_MINIMA_FIELDS == (
+        "grid_index",
+        "y",
+        "scale_s",
+        "chi2",
+        "shuffle_signed",
+        "shuffle_magnitude",
+        "branch",
+    )
 
     assert observations
     assert {
@@ -187,7 +220,38 @@ def test_prepare_fit_export_members_and_key_columns() -> None:
     } <= set(observations[0])
     assert "weight" not in observations[0]  # renamed to avoid input/resolved clash
     assert len(grid) == result.options.grid_points
-    assert {"y", "scale_s", "chi2"} <= set(grid[0])
+    assert {
+        "y",
+        "scale_s",
+        "chi2",
+        "shuffle_signed",
+        "shuffle_magnitude",
+        "branch",
+    } <= set(grid[0])
+    assert float(grid[0]["y"]) == 0.0
+    assert float(grid[0]["shuffle_signed"]) == -0.5
+    assert float(grid[0]["shuffle_magnitude"]) == 0.5
+    assert grid[0]["branch"] == "lower"
+    assert float(grid[25]["y"]) == 0.25
+    assert float(grid[25]["shuffle_signed"]) == 0.0
+    assert float(grid[25]["shuffle_magnitude"]) == 0.0
+    assert grid[25]["branch"] == "reference"
+    assert float(grid[-1]["y"]) == 0.5
+    assert float(grid[-1]["shuffle_signed"]) == 0.5
+    assert float(grid[-1]["shuffle_magnitude"]) == 0.5
+    assert grid[-1]["branch"] == "upper"
+    assert refine
+    assert {"shuffle_signed", "shuffle_magnitude", "branch"} <= set(refine[0])
+    for process_rows in (grid, refine, minima):
+        for row in process_rows:
+            y_value = float(row["y"])
+            signed = float(row["shuffle_signed"])
+            assert signed == pytest.approx(2.0 * (y_value - 0.25))
+            assert float(row["shuffle_magnitude"]) == pytest.approx(abs(signed))
+            expected_branch = (
+                "lower" if y_value < 0.25 else "upper" if y_value > 0.25 else "reference"
+            )
+            assert row["branch"] == expected_branch
     assert best_point and best_point[0]["source"] in {"grid", "refine"}
     assert residuals
     assert {"I_obs", "I_model", "S_I_model", "residual", "weight"} <= set(residuals[0])
@@ -210,7 +274,7 @@ def test_prepare_fit_export_members_and_key_columns() -> None:
     assert "resolved_weight" in readme.lower() or "resolved weight" in readme.lower()
 
     assert manifest["export_kind"] == "fit"
-    assert manifest["schema_version"] == "2.1"
+    assert manifest["schema_version"] == "2.2"
     assert manifest["config_hash"] == fit_export_hash(result)
     assert "not" in readme.lower() and "rietveld" in readme.lower()
     # Fit manifests drop sweep-centric legacy fields and note non-Rietveld limits.
@@ -220,6 +284,54 @@ def test_prepare_fit_export_members_and_key_columns() -> None:
     assert any("rietveld" in item.lower() for item in manifest["limits"])
     assert "objective" in manifest["intensity"]
     assert "I_rel_local" not in manifest["intensity"]
+    assert "analysis.xlsx" in manifest["files"]
+    assert xlsx_sheet_names(workbook) == [
+        "README",
+        "Parameters",
+        "Columns",
+        "Observations",
+        "GridScan",
+        "RefineTrace",
+        "BestPoint",
+        "Residuals",
+        "LocalMinima",
+    ]
+    grid_cells = xlsx_sheet_cells(workbook, "GridScan")
+    assert grid_cells["A1"] == ("text", "y")
+    assert grid_cells["D1"] == ("text", "shuffle_signed")
+    assert grid_cells["E1"] == ("text", "shuffle_magnitude")
+    assert grid_cells["F1"] == ("text", "branch")
+    assert grid_cells["D2"] == ("number", "-0.5")
+    assert grid_cells["E2"] == ("number", "0.5")
+    assert grid_cells["F2"] == ("text", "lower")
+    assert grid_cells["F27"] == ("text", "reference")
+
+    column_cells = xlsx_sheet_cells(workbook, "Columns")
+    metadata_rows = {
+        (column_cells[f"A{row}"][1], column_cells[f"B{row}"][1]): (
+            column_cells[f"C{row}"][1],
+            column_cells[f"D{row}"][1],
+            column_cells[f"E{row}"][1],
+        )
+        for row in range(2, 500)
+        if f"A{row}" in column_cells
+    }
+    for sheet_name in ("GridScan", "RefineTrace", "LocalMinima"):
+        assert metadata_rows[(sheet_name, "shuffle_signed")] == (
+            "number",
+            "fractional",
+            "Signed basal shuffle, 2*(y-0.25).",
+        )
+        assert metadata_rows[(sheet_name, "shuffle_magnitude")] == (
+            "number",
+            "fractional",
+            "Basal-shuffle magnitude, abs(shuffle_signed).",
+        )
+        assert metadata_rows[(sheet_name, "branch")] == (
+            "text",
+            "",
+            "Shuffle-magnitude branch: lower, upper, or zero-shuffle reference.",
+        )
 
     # No full residual cube for every grid y.
     residual_names = [name for name in names if "residual" in name]

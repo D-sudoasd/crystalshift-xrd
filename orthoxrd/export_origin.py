@@ -17,6 +17,7 @@ class SweepExportPlotState:
     two_theta_maximum: float
     sweep_axis_minimum: float
     sweep_axis_maximum: float
+    display_axis: str | None = None
 
 ORIGIN_COLUMN_MAP_FIELDS: Final[tuple[str, ...]] = (
     "file",
@@ -51,6 +52,7 @@ def plot_state_json(
                 "two_theta_maximum": state.two_theta_maximum,
                 "sweep_axis_minimum": state.sweep_axis_minimum,
                 "sweep_axis_maximum": state.sweep_axis_maximum,
+                "sweep_display_axis": state.display_axis or "native",
             }
         )
     elif state is not None:
@@ -78,9 +80,32 @@ def current_origin_rows() -> Iterable[Mapping[str, CsvValue]]:
     )
     peaks = (
         ("two_theta_deg", "X", "Peak 2theta", "deg", "Bragg peak center"),
+        ("y", "X", "Wyckoff y", "", "Active Cmcm 4c fractional coordinate"),
         ("hkl", "L", "HKL", "", "Reflection label"),
         ("line", "L", "Radiation line", "", "Radiation label"),
         ("F2", "Y", "Structure factor squared", "a.u.", "Calculated F squared"),
+        ("F_abs", "Y", "Structure factor magnitude", "a.u.", "Calculated absolute F"),
+        (
+            "multiplicity_structure_factor_sq",
+            "Y",
+            "N x F2",
+            "a.u.",
+            "Crystallographic multiplicity times F squared",
+        ),
+        (
+            "material_scattering_factor_R_hkl",
+            "Y",
+            "R hkl with LP",
+            "model A^-6",
+            "N x F2 x LP / V^2; model reference factor",
+        ),
+        (
+            "material_scattering_factor_R_hkl_no_lp",
+            "Y",
+            "R hkl without LP",
+            "model A^-6",
+            "N x F2 / V^2; use only with correspondingly corrected peak areas",
+        ),
         ("I_model_peak", "Y", "Model peak intensity", "a.u.", "Corrected model intensity"),
         ("I_rel_local", "Y", "Relative peak intensity", "%", "Current-pattern normalization"),
     )
@@ -103,6 +128,27 @@ def sweep_origin_rows(result: SweepResult) -> Iterable[Mapping[str, CsvValue]]:
         ("hkl", "L", "HKL", "", "Reflection label"),
         ("series_id", "L", "Series ID", "", "Stable line and HKL identifier"),
         ("F2", "Y", "Structure factor squared", "a.u.", "Calculated F squared"),
+        (
+            "multiplicity_structure_factor_sq",
+            "Y",
+            "N x F2",
+            "a.u.",
+            "Crystallographic multiplicity times F squared",
+        ),
+        (
+            "material_scattering_factor_R_hkl",
+            "Y",
+            "R hkl with LP",
+            "model A^-6",
+            "N x F2 x LP / V^2; unnormalized model reference",
+        ),
+        (
+            "material_scattering_factor_R_hkl_no_lp",
+            "Y",
+            "R hkl without LP",
+            "model A^-6",
+            "N x F2 / V^2; unnormalized model reference",
+        ),
         ("I_model_peak", "Y", "Model peak intensity", "a.u.", "Corrected model intensity"),
         ("I_rel_global", "Y", "Global relative peak intensity", "%", "Comparable evolution"),
     )
@@ -131,6 +177,17 @@ def sweep_origin_rows(result: SweepResult) -> Iterable[Mapping[str, CsvValue]]:
     )
     for filename, long_name, unit in (
         ("peak_evolution_matrix_F2.csv", "Structure factor squared", "a.u."),
+        ("peak_evolution_matrix_N_F2.csv", "N x F2", "a.u."),
+        (
+            "peak_evolution_matrix_R_hkl_with_LP.csv",
+            "R hkl with LP",
+            "model A^-6",
+        ),
+        (
+            "peak_evolution_matrix_R_hkl_no_LP.csv",
+            "R hkl without LP",
+            "model A^-6",
+        ),
         ("peak_evolution_matrix_I_model.csv", "Model peak intensity", "a.u."),
         ("peak_evolution_matrix_I_rel_global.csv", "Global relative peak intensity", "%"),
     ):

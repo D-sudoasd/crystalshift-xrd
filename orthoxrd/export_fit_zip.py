@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Final
 
 from orthoxrd.config import config_json, config_payload
+from orthoxrd.export_excel_packages import build_fit_excel_workbook
 from orthoxrd.export_fit_rows import (
     BEST_POINT_FIELDS,
     GRID_SCAN_FIELDS,
@@ -28,6 +29,7 @@ from orthoxrd.export_writer import (
     cleanup_export,
     create_export_path,
     finalize_export,
+    write_binary_entry,
     write_csv_entry,
     write_text_entry,
 )
@@ -41,6 +43,7 @@ FIT_EXPORT_FILES: Final[tuple[str, ...]] = (
     "best_point.csv",
     "residual_at_best.csv",
     "local_minima.csv",
+    "analysis.xlsx",
     "config.json",
     "README.md",
     "manifest.json",
@@ -95,6 +98,11 @@ def prepare_fit_export(result: FitResult) -> PreparedExport:
             "local_minima.csv",
             LOCAL_MINIMA_FIELDS,
             local_minima_rows(result),
+        )
+        metadata["analysis.xlsx"] = write_binary_entry(
+            archive,
+            "analysis.xlsx",
+            build_fit_excel_workbook(result),
         )
         metadata["config.json"] = write_text_entry(
             archive, "config.json", fit_config_json(result)

@@ -73,6 +73,21 @@ def write_text_entry(
     return ExportFileMeta(_text_rows(text), 1, hashlib.sha256(payload).hexdigest())
 
 
+def write_binary_entry(
+    archive: zipfile.ZipFile,
+    name: str,
+    payload: bytes,
+    *,
+    rows: int = 0,
+    columns: int = 1,
+) -> ExportFileMeta:
+    """Write an opaque binary export member and record its exact checksum."""
+    if rows < 0 or columns < 1:
+        raise ValueError("binary export metadata requires rows >= 0 and columns >= 1")
+    archive.writestr(name, payload)
+    return ExportFileMeta(rows, columns, hashlib.sha256(payload).hexdigest())
+
+
 def finalize_export(path: Path, config_hash: str) -> PreparedExport:
     size = path.stat().st_size
     if size > MAX_ZIP_BYTES:

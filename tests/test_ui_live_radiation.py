@@ -12,6 +12,7 @@ from orthoxrd.ui_radiation import (
     MODE_KEY,
     _lines_from_mode,
 )
+from orthoxrd.ui_structure import BRANCH_KEY, SHUFFLE_KEY, Y_KEY
 
 
 def test_live_energy_commit_preserves_multiline_radiation_template() -> None:
@@ -57,3 +58,21 @@ def test_manual_source_mode_change_clears_live_multiline_template() -> None:
     assert len(rebuilt) == 1
     assert CUSTOM_TEMPLATE_KEY not in state
     assert CUSTOM_TEMPLATE_MODE_KEY not in state
+
+
+def test_live_structure_commit_keeps_y_magnitude_and_branch_synchronised() -> None:
+    state: dict[str, object] = {BRANCH_KEY: "lower"}
+
+    with (
+        patch("orthoxrd.ui_live.st.session_state", state),
+        patch("orthoxrd.ui_structure.st.session_state", state),
+    ):
+        _apply_axis_value("y", 0.3, "lower")
+        assert state[Y_KEY] == pytest.approx(0.3)
+        assert state[SHUFFLE_KEY] == pytest.approx(0.1)
+        assert state[BRANCH_KEY] == "upper"
+
+        _apply_axis_value("shuffle_magnitude", 0.0, "upper")
+        assert state[Y_KEY] == pytest.approx(0.25)
+        assert state[SHUFFLE_KEY] == pytest.approx(0.0)
+        assert state[BRANCH_KEY] == "upper"

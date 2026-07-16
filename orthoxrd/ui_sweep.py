@@ -13,19 +13,25 @@ from orthoxrd.export_rows import peak_evolution_rows, sweep_step_rows
 from orthoxrd.export_writer import PreparedExport
 from orthoxrd.export_zip import prepare_sweep_export
 from orthoxrd.i18n import t, th
+from orthoxrd.peak_metrics import PEAK_METRICS, PeakMetric
 from orthoxrd.simulation import SimulationResult
+from orthoxrd.structure_coordinates import StructureAxis
 from orthoxrd.ui_export import discard_prepared
 from orthoxrd.ui_plot_sweep import (
-    PeakMetric,
     SpectrumNormalization,
     available_series,
     plot_peak_evolution,
     plot_sweep_heatmap,
     plot_sweep_waterfall,
+    sweep_display_axis_options,
 )
 from orthoxrd.ui_style import kpi_grid
 from orthoxrd.ui_sweep_controls import SweepFormState, render_sweep_form
-from orthoxrd.ui_sweep_range import SweepDisplayRange, render_sweep_display_range
+from orthoxrd.ui_sweep_range import (
+    SweepDisplayRange,
+    render_sweep_display_range,
+    sweep_display_key,
+)
 
 RESULT_KEY = "sweep_result"
 SIGNATURE_KEY = "sweep_result_signature"
@@ -50,7 +56,8 @@ def render_sweep_view(current: SimulationResult) -> None:
         st.markdown(t("sweep.valid"), unsafe_allow_html=True)
     _summary(result)
     normalization = cast(SpectrumNormalization, form.normalization)
-    display_range = render_sweep_display_range(result)
+    display_axis = _render_structure_display_axis(result)
+    display_range = render_sweep_display_range(result, display_axis)
     view = st.segmented_control(
         t("sweep.result_view"),
         ["heatmap", "waterfall", "peak_evolution", "data_preview"],
@@ -61,21 +68,31 @@ def render_sweep_view(current: SimulationResult) -> None:
     )
     if view == "waterfall":
         st.plotly_chart(
-            plot_sweep_waterfall(result, normalization, display_range),
+            plot_sweep_waterfall(
+                result,
+                normalization,
+                display_range,
+                display_axis=display_axis,
+            ),
             width="stretch",
             config={"displaylogo": False},
         )
     elif view == "peak_evolution":
-        _render_peak_evolution(result)
+        _render_peak_evolution(result, display_axis)
     elif view == "data_preview":
         _render_data_preview(result)
     else:
         st.plotly_chart(
-            plot_sweep_heatmap(result, normalization, display_range),
+            plot_sweep_heatmap(
+                result,
+                normalization,
+                display_range,
+                display_axis=display_axis,
+            ),
             width="stretch",
             config={"displaylogo": False, "scrollZoom": True},
         )
-    _render_export(result, form.signature, stale, display_range)
+    _render_export(result, form.signature, stale, display_range, display_axis)
 
 
 def _run_if_submitted(form: SweepFormState, current: SimulationResult) -> None:
@@ -122,12 +139,15 @@ def _summary(result: SweepResult) -> None:
     )
 
 
-def _render_peak_evolution(result: SweepResult) -> None:
+def _render_peak_evolution(
+    result: SweepResult,
+    display_axis: StructureAxis | None,
+) -> None:
     metric = cast(
         PeakMetric,
         st.selectbox(
             t("sweep.peak_metric"),
-            ["F2", "I_model", "I_rel_global"],
+            list(PEAK_METRICS),
             format_func=lambda code: t(f"sweep.metric.{code}"),
             key="sweep_peak_metric",
             help=th("sweep.peak_metric"),
@@ -151,7 +171,7 @@ def _render_peak_evolution(result: SweepResult) -> None:
     label_to_id = {label: series_id for series_id, label in series}
     selected_ids = [label_to_id[label] for label in selected_labels]
     st.plotly_chart(
-        plot_peak_evolution(result, selected_ids, metric),
+        plot_peak_evolution(result, selected_ids, metric, display_axis=display_axis),
         width="stretch",
         config={"displaylogo": False},
     )
@@ -180,11 +200,12 @@ def _render_export(
     signature: str,
     stale: bool,
     display_range: SweepDisplayRange,
+    display_axis: StructureAxis | None,
 ) -> None:
     active_export_signature = (
         f"{signature}:{display_range.two_theta_minimum}:"
         f"{display_range.two_theta_maximum}:{display_range.axis_minimum}:"
-        f"{display_range.axis_maximum}"
+        f"{display_range.axis_maximum}:{display_axis or 'native'}"
     )
     st.divider()
     if st.button(
@@ -203,6 +224,7 @@ def _render_export(
                     display_range.two_theta_maximum,
                     display_range.axis_minimum,
                     display_range.axis_maximum,
+                    display_axis,
                 ),
             )
         st.session_state[EXPORT_KEY] = prepared
@@ -231,3 +253,24 @@ def _render_export(
     st.caption(
         t("sweep.export_size", kib=prepared.size_bytes / 1024, sha=prepared.sha256[:12])
     )
+
+
+def _render_structure_display_axis(result: SweepResult) -> StructureAxis | None:
+    options = sweep_display_axis_options(result)
+    if not options:
+        return None
+    native_axis = result.steps[0].step.axis
+    default: StructureAxis = (
+        "shuffle_magnitude" if native_axis == "shuffle_magnitude" else "y"
+    )
+    selected = st.segmented_control(
+        t("sweep.display_coordinate"),
+        options,
+        format_func=lambda code: t(f"axis.{code}"),
+        default=default if default in options else options[0],
+        key=f"sweep_display_coordinate_{sweep_display_key(result)}",
+        help=th("sweep.display_coordinate"),
+    )
+    if "shuffle_magnitude" not in options:
+        st.caption(t("sweep.display_coordinate_cross_branch"))
+    return cast(StructureAxis, selected or options[0])

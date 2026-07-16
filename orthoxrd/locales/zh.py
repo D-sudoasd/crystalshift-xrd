@@ -17,9 +17,11 @@ ZH_TEXT: dict[str, str] = {
     "lang.label": "界面语言",
     "lang.zh": "中文",
     "lang.en": "English",
+    "common.on": "开",
+    "common.off": "关",
     # App shell
     "app.page_title": "CrystalShift XRD",
-    "app.model_tag": "Cmcm 4c | schema 2.1",
+    "app.model_tag": "Cmcm 4c | schema 2.2",
     "app.subtitle": "面向晶格、Wyckoff-y、基面 shuffle 与入射辐射的运动学粉末 XRD 理论模型。",
     "app.spinner": "正在计算当前理论模型…",
     "app.summary.a": "a (Å)",
@@ -30,6 +32,18 @@ ZH_TEXT: dict[str, str] = {
     "app.summary.energy": "能量 (keV)",
     "app.summary.lambda": "波长 λ (Å)",
     "app.summary.hash": "配置哈希",
+    "app.active_model.composition_na": "不适用（单位散射体）",
+    "app.active_model_details": (
+        "**活动模型** · 散射：{scattering} · 成分：{composition} · "
+        "2θ {tth_min:g}–{tth_max:g}° · {profile} · FWHM {fwhm:.4f}° · "
+        "修正：LP {lp} · 多重度 {multiplicity} · 体积 1/V {volume}"
+    ),
+    "inputs.required_review": (
+        '<div class="xrd-note xrd-note-warn"><strong>分析或导出前必须核对：</strong>'
+        "入射辐射、晶格、Wyckoff y、有符号 shuffle 与 shuffle 幅度，以及"
+        "「材料与计算设置」中的"
+        "散射/成分、2θ 窗口、峰形和强度修正。</div>"
+    ),
     # Navigation
     "nav.label": "结果视图",
     "nav.pattern": "衍射谱",
@@ -75,8 +89,12 @@ ZH_TEXT: dict[str, str] = {
     "structure.c": "c (Å)",
     "structure.y": "Wyckoff y ({ymin:.3f}-{ymax:.3f})",
     "structure.shuffle": "基面 shuffle 幅度 ({smin:.3f}-{smax:.3f})",
+    "structure.branch": "shuffle 幅度分支",
     "structure.signed_label": "有符号 shuffle",
-    "structure.signed_meta": "2(y − 0.25)",
+    "structure.signed_meta": "2(y − 0.25) · 当前{branch}",
+    "structure.branch.lower": "下分支",
+    "structure.branch.upper": "上分支",
+    "structure.branch.reference": "零-shuffle 参考点",
     "structure.relation_note": (
         "<div class=\"xrd-note\"><strong>y / shuffle 关系</strong> "
         "signed = 2(y − 0.25)；magnitude = abs(signed)。"
@@ -95,8 +113,19 @@ ZH_TEXT: dict[str, str] = {
         "下分支：y = 0.25 − shuffle_magnitude / 2；"
         "上分支：y = 0.25 + shuffle_magnitude / 2。"
     ),
+    "structure.context.caption": (
+        "当前结构：y={y:.6f} | 有符号 shuffle={signed:+.6f} | "
+        "shuffle 幅度={magnitude:.6f} | {branch}。"
+        "这些坐标调制结构因子与理论强度；谱图/峰表的物理横轴仍为 2θ、q 或 d。"
+    ),
+    "structure.plot.cell": "Cmcm 晶胞",
+    "structure.plot.reference": "y=0.25 参考位点",
+    "structure.plot.current": "当前 4c 位点",
+    "structure.plot.shuffle_path": "沿 b 轴的 shuffle 路径",
+    "structure.plot.shuffle_arrow": "shuffle 方向",
     # Advanced
-    "advanced.popover": "高级计算设置",
+    "advanced.popover": "材料与计算设置（请核对）",
+    "advanced.intro": "这些设置会改变峰是否出现、峰形和理论强度；关闭面板后，当前取值仍会显示在活动模型摘要中。",
     "advanced.scattering_section": "##### 散射模型",
     "advanced.window_section": "##### 模拟窗口",
     "advanced.profile_section": "##### 峰形剖面",
@@ -112,6 +141,9 @@ ZH_TEXT: dict[str, str] = {
     "advanced.points": "谱图采样点数",
     "advanced.cutoff": "峰表截断阈值 (%)",
     "advanced.profile": "峰形",
+    "advanced.profile.pseudo_voigt": "Pseudo-Voigt",
+    "advanced.profile.gaussian": "高斯",
+    "advanced.profile.lorentzian": "洛伦兹",
     "advanced.fwhm": "半高宽 FWHM (° 2θ)",
     "advanced.eta": "Pseudo-Voigt η",
     "advanced.lp": "Lorentz–偏振因子 (LP)",
@@ -138,6 +170,10 @@ ZH_TEXT: dict[str, str] = {
     ),
     "pattern.download_spectrum": "下载谱图 CSV",
     "pattern.download_peaks": "下载峰表 CSV",
+    "export.csv_excel_hint.current": (
+        "CSV 用于 Origin/Python 或其它机器处理；如需用 Excel 查看，请使用当前结果 ZIP "
+        "中的 analysis.xlsx，以保留 021 等前导零并阅读说明页。"
+    ),
     # Plot state
     "plot.display_range": "显示范围",
     "plot.display_caption": "仅裁剪显示。模拟窗口与导出数据行保持不变。",
@@ -164,6 +200,7 @@ ZH_TEXT: dict[str, str] = {
         "显示 {shown:,} / {total:,} 条计算峰行。"
         "可横向滚动查看全部字段；CSV 导出包含全部列。"
     ),
+    "peaks.empty_filtered": "当前筛选没有匹配的峰。请放宽 HKL、辐射线、强度或 2θ 条件。",
     "peaks.selected": "已选 {line} {hkl} | 2θ={two_theta:.6f}° | {series_id}",
     "peaks.hkl_filter": "HKL 过滤",
     "peaks.hkl_placeholder": "例如 110 或 02",
@@ -184,9 +221,26 @@ ZH_TEXT: dict[str, str] = {
     "f2.empty": "请至少选择一条 HKL 系列。",
     "f2.preview": "数据预览",
     "f2.download": "F² 演化 CSV",
+    "f2.download_excel": "F² 演化 Excel",
+    "export.csv_excel_hint.f2": (
+        "CSV 用于 Origin/Python 或其它机器处理；在 Excel 中请使用 f2_evolution.xlsx，"
+        "以保留 021 等前导零，并查看 Parameters 与 Columns 说明页。"
+    ),
     "f2.start": "演化起点",
     "f2.stop": "演化终点",
     "f2.points": "演化点数",
+    "f2.structure_preview.title": "##### Cmcm 4c 基面位移结构示意",
+    "f2.structure_preview.slider": "结构示意预览坐标",
+    "f2.structure_preview.caption": (
+        "灰色为同一 Cmcm 晶胞中 y=0.25 的零-shuffle 参考位点，青色为当前位点；"
+        "位移严格沿 b 轴，单原子 |Δb| = b|y−0.25|。"
+        "此滑块只更新结构示意，不写回顶部主结构参数。"
+    ),
+    "f2.structure_preview.help": (
+        "拖动后只预览所选 Wyckoff y、有符号 shuffle 或 shuffle 幅度坐标对应的"
+        "真实 4c 位点与位移路径；"
+        "不会重算当前模拟或改变导出。"
+    ),
     "f2.stop_error": "演化终点必须大于起点。",
     "f2.x_title.y": "Wyckoff y",
     "f2.x_title.signed_shuffle": "有符号 shuffle = 2(y − 0.25)",
@@ -220,7 +274,7 @@ ZH_TEXT: dict[str, str] = {
         "仅在松开滑块时将最终帧写回 Python 主参数。"
     ),
     "live.export.prepare": "准备实时演化 ZIP",
-    "live.export.spinner": "正在构建 schema 2.1 实时分析包…",
+    "live.export.spinner": "正在构建 schema 2.2 实时分析包…",
     "live.export.caption_prepare": "按需生成全精度实时 ZIP。",
     "live.export.caption_changed": "实时选择已变更，请重新准备 ZIP。",
     "live.export.download": "下载 live_evolution.zip",
@@ -257,6 +311,9 @@ ZH_TEXT: dict[str, str] = {
     "sweep.kpi.global_max": "全局剖面最大值",
     "sweep.peak_metric": "峰度量",
     "sweep.metric.F2": "F²",
+    "sweep.metric.N_F2": "N·F²（多重度 × 结构因子）",
+    "sweep.metric.R_hkl_with_LP": "R_hkl（含 LP，理论参考）",
+    "sweep.metric.R_hkl_no_LP": "R_hkl_no_LP（理论参考）",
     "sweep.metric.I_model": "模型峰强度",
     "sweep.metric.I_rel_global": "全局相对峰强度",
     "sweep.peak_series": "峰系列（最多 12 条）",
@@ -264,8 +321,8 @@ ZH_TEXT: dict[str, str] = {
     "sweep.peak_sample_header": "##### 峰演化样例",
     "sweep.preview_caption": "预览最多 500 行峰数据。ZIP 含完整表格。",
     "sweep.prepare": "准备扫描 ZIP",
-    "sweep.spinner": "正在将 schema 2.1 文件写入 ZIP…",
-    "sweep.prepare_caption": "先运行当前配置，再准备 schema 2.1 ZIP。",
+    "sweep.spinner": "正在将 schema 2.2 文件写入 ZIP…",
+    "sweep.prepare_caption": "先运行当前配置，再准备 schema 2.2 ZIP。",
     "sweep.download": "下载扫描 ZIP",
     "sweep.export_size": "{kib:.1f} KiB | SHA-256 {sha}…",
     "sweep.calc_spinner": "正在计算参数扫描…",
@@ -299,6 +356,11 @@ ZH_TEXT: dict[str, str] = {
         "shuffle_branch, energy_keV, wavelength_A。限制：1–1001 行。"
     ),
     "sweep.display_range": "扫描显示范围",
+    "sweep.display_coordinate": "结构显示坐标",
+    "sweep.display_coordinate_cross_branch": (
+        "该 y 扫描跨过 y=0.25；shuffle 幅度会把上下分支折叠到同一数值，"
+        "因此仅提供 y 与有符号 shuffle。"
+    ),
     "sweep.display_caption": "仅裁剪显示。ZIP 始终包含完整模拟窗口。",
     "sweep.display_tth_min": "扫描 2θ 下限",
     "sweep.display_tth_max": "扫描 2θ 上限",
@@ -316,7 +378,7 @@ ZH_TEXT: dict[str, str] = {
     # Export current
     "export.prepare": "准备当前结果 ZIP",
     "export.spinner": "正在准备当前模拟导出…",
-    "export.caption": "Schema 2.1 导出按需生成。",
+    "export.caption": "Schema 2.2 导出按需生成。",
     "export.expired": "已准备的导出已失效，请重新准备。",
     "export.download": "下载当前 ZIP",
     "export.size": "{kib:.1f} KiB | SHA-256 {sha}…",
@@ -337,7 +399,19 @@ ZH_TEXT: dict[str, str] = {
     "fit.valid": (
         '<div class="xrd-note">拟合结果与当前配置及观测表一致。</div>'
     ),
-    "fit.obs.header": "##### 观测峰表",
+    "fit.context.header": "##### 拟合固定上下文（请先核对）",
+    "fit.context.details": (
+        "拟合不会优化这些量：a={a:.6g} Å，b={b:.6g} Å，c={c:.6g} Å；"
+        "辐射={radiation}；散射={scattering}（{composition}）；"
+        "2θ={tth_min:.6g}–{tth_max:.6g}°，HKL 上限={hkl_max}；"
+        "LP={lp}，多重度={multiplicity}，1/V={volume}。"
+    ),
+    "fit.context.profile_excluded": (
+        "这是离散峰强拟合：峰形、FWHM、背景和峰位偏移不参与优化。"
+        "峰高模式仅使用等宽近似；有积分强度时应选峰面积。"
+    ),
+    "fit.observable.header": "##### 1. 先选择实验观测量",
+    "fit.obs.header": "##### 2. 输入至少两个真实观测峰",
     "fit.obs.upload": "观测 CSV",
     "fit.obs.editor": "观测表（CSV 文本）",
     "fit.obs.template": "下载观测表模板 CSV",
@@ -350,7 +424,12 @@ ZH_TEXT: dict[str, str] = {
         "当前入射源为多辐射线（{lines}）。"
         "每行必须填写 line 或 line_id（如 line_00），否则匹配将因多线歧义失败。"
     ),
-    "fit.options.header": "##### 拟合选项",
+    "fit.obs.invalid": "当前观测表无法运行：{error}",
+    "fit.obs.need_two": "当前识别 {count} 条有效观测；至少需要 2 条真实峰数据才能运行。",
+    "fit.options.header": "##### 3. 设置权重与 y 扫描",
+    "fit.options.scan_note": (
+        "完整 y 网格用于暴露多个局部极小；局部细化只在网格最优附近提高精度。"
+    ),
     "fit.observable_mode": "观测量模式",
     "fit.mode.peak_area": "峰面积（推荐）",
     "fit.mode.peak_height": "峰高（等宽近似）",
@@ -364,7 +443,7 @@ ZH_TEXT: dict[str, str] = {
         "峰高模式假定峰宽相等，因而峰高 ∝ 面积。v1 中数值目标与峰面积模式相同，"
         "公共常数由 S 吸收。若有积分强度，请优先使用峰面积模式。"
     ),
-    "fit.run": "运行拟合",
+    "fit.run": "4. 运行拟合",
     "fit.err.y_range": "y 网格终点必须大于或等于起点。",
     "fit.err.obs_encoding": (
         "观测文件不是有效的 UTF-8 文本。请另存为 UTF-8 编码的 CSV/TXT 后重新上传。"
@@ -385,9 +464,30 @@ ZH_TEXT: dict[str, str] = {
     "fit.kpi.peaks": "使用峰数",
     "fit.kpi.mode": "观测量",
     "fit.plot.chi2": "χ²(y)",
+    "fit.plot.scale": "最优标度因子 S(y)",
+    "fit.plot.refine_trace": "局部细化轨迹",
+    "fit.plot.best": "最优点",
     "fit.plot.local_minima": "局部极小",
     "fit.plot.x_y": "Wyckoff y",
     "fit.plot.y_chi2": "χ²(y)",
+    "fit.plot.y_scale": "最优标度因子 S(y)",
+    "fit.plot.parity_line": "理想一致线",
+    "fit.plot.observations": "观测峰与拟合峰",
+    "fit.plot.x_observed": "观测峰强 I_obs",
+    "fit.plot.y_fitted": "拟合峰强 S* · I_model",
+    "fit.plot.chi2_contribution": "逐峰 χ² 贡献",
+    "fit.plot.x_hkl": "HKL",
+    "fit.plot.y_chi2_contribution": "w · residual²",
+    "fit.diagnostics.header": "##### 拟合过程与一致性诊断",
+    "fit.display_coordinate": "结构显示坐标",
+    "fit.display_coordinate_magnitude_note": (
+        "shuffle 幅度在 y=0.25 两侧是二对一映射；图中上下分支分开绘制，"
+        "不会跨零-shuffle 点错误连线。"
+    ),
+    "fit.diagnostics.chi2": "χ² 网格、局部细化轨迹、局部极小与最终最优点。",
+    "fit.diagnostics.scale": "每个结构坐标处闭式求得的最优标度因子 S(y)。",
+    "fit.diagnostics.parity": "观测峰强与最优拟合峰强；越接近对角线，一致性越好。",
+    "fit.diagnostics.contributions": "每个 HKL 的 w·residual²；柱高之和等于最优 χ²。",
     "fit.local_minima.header": "##### 局部极小候选",
     "fit.local_minima.empty": "网格 χ² 曲线上未找到邻域极小。",
     "fit.residuals.header": "##### 最优点残差",
@@ -404,6 +504,24 @@ ZH_TEXT: dict[str, str] = {
     "fit.export_size": "{kib:.1f} KiB | SHA-256 {sha}…",
     # Method
     "method.title": "方法与解读",
+    "method.workflow": """
+#### 首次使用顺序
+
+1. **核对输入**：分析或导出前先核对入射辐射、晶格、Wyckoff y、有符号 shuffle、shuffle 幅度，以及材料与计算设置。
+2. **选择问题**：峰位看晶格与辐射，峰强看 Wyckoff y、有符号/幅度 shuffle、散射模型与修正，连续演化使用实时或扫描。
+3. **先图后表**：先确认趋势与异常，再到峰表或数据预览核对具体 HKL 和数值。
+4. **复核后导出**：确认活动模型摘要、归一化方式与结果有效状态，再准备导出包。
+""",
+    "method.view_guide": """
+#### 各分区用途
+
+- **衍射谱**：查看当前模型的峰位、峰形、棒图，以及单参数实时演化。
+- **布拉格峰**：筛选具体辐射线与 HKL，核对 F²、峰位和各强度因子。
+- **F² 演化**：隔离单位散射体结构因子，并用真实 Cmcm 4c 晶胞示意对照 Wyckoff y 与有符号/幅度 shuffle 的原子移动。
+- **参数扫描**：计算范围扫描或逐行 CSV 轨迹；热图、瀑布图和峰演化可切换 y / 有符号 shuffle / 安全的幅度显示。
+- **峰强拟合**：由实验峰面积或等宽近似峰高估计 y 与标度 S，并检查 χ²、S、观测-拟合一致性及逐峰残差；不是全谱精修。
+- **方法与解读**：查公式、归一化定义、拟合假设与模型边界。
+""",
     "method.left": """
 #### Cmcm 4c 模型
 
@@ -416,11 +534,23 @@ ZH_TEXT: dict[str, str] = {
 改变 y 会改变结构因子，但不改变 d 间距。
 改变 a、b 或 c 会改变 d 间距与布拉格位置。
 
+结构示意中的 **y=0.25** 是同一 Cmcm 晶胞内的零-shuffle 特殊位置参考，
+不代表在没有额外证据时把它指定为另一母相。每个 4c 位点相对参考的单原子位移为
+**±b(y−0.25) = ±b·shuffle_signed/2**，严格沿 b 轴。
+
 #### 峰强度
 
 **I_model_peak = F² × 多重度 × LP × 体积因子 × 辐射线权重**
 
 各 applied 因子在导出中单独给出。applied_volume 为 1/V 或 1，以保持所选模型约定。
+
+另提供不受修正开关和辐射线权重影响的理论参考因子：
+
+**R_hkl（含 LP）= N × F² × LP / V²**
+
+**R_hkl_no_LP = N × F² / V²**
+
+若实验积分已完成 LP、偏振或相应几何校正，才使用 no-LP 口径。两者都不是仪器绝对标定强度。
 
 #### 离散峰强拟合（非 Rietveld）
 
@@ -529,6 +659,12 @@ ZH_HELP: dict[str, str] = {
         "物理上对应 shuffle 大小；与 y 一一对应（选定分支后）。",
         "从 0（y=0.25）扫到 0.166 可复现常见下分支路径。",
         "幅度不区分上下分支符号，符号由 y 相对 0.25 决定。",
+    ),
+    "structure.branch": _h(
+        "指定非负 shuffle 幅度映射到哪个 y 分支。",
+        "在 y=0.25 时仅凭幅度无法判断分支，因此该选择始终可见。",
+        "下分支 y=0.25-s/2；上分支 y=0.25+s/2。",
+        "编辑 y 会同步分支；回到零-shuffle 参考点时保留最近一次有效分支。",
     ),
     "advanced.scattering": _h(
         "选择单位散射体或按成分加权的原子散射因子。",
@@ -709,7 +845,24 @@ ZH_HELP: dict[str, str] = {
     "f2.start": _h("演化横轴起点。", "定义曲线采样区间。", "下分支 shuffle 0→0.166。", "须小于终点。"),
     "f2.stop": _h("演化横轴终点。", "与起点组成闭区间采样。", "y 可取 0.25。", "须大于起点。"),
     "f2.points": _h("曲线采样点数。", "影响平滑度。", "301 点通常足够。", "范围 10–2000。"),
-    "f2.download": _h("导出 F² 演化长表。", "后处理与作图。", "f2_evolution.csv。", "列为 axis_value,hkl,F2。"),
+    "f2.download": _h(
+        "导出 F² 演化长表。",
+        "同时保留所选显示轴与 canonical y，便于后处理作图。",
+        "f2_evolution.csv。",
+        "列含 axis_value、hkl、F2、axis_code、y、有符号/幅度 shuffle 与 branch。",
+    ),
+    "f2.download_excel": _h(
+        "把同一份 F² 演化长表导出为原生 Excel 工作簿。",
+        "021 等 HKL 以文本保存，不丢失前导零。",
+        "README、Parameters 与 Columns 分页解释模型、路径和全部字段。",
+        "Origin/Python 自动处理仍建议使用 CSV。",
+    ),
+    "f2.structure_preview.slider": _h(
+        "选择结构示意中显示的 Wyckoff y、有符号 shuffle 或 shuffle 幅度坐标。",
+        "把抽象演化坐标映射为真实 Cmcm 4c 位点沿 b 轴的移动。",
+        "可对照 F² 曲线上的某个坐标观察原子位置。",
+        "仅预览，不写回顶部主结构参数，也不触发模拟或导出变化。",
+    ),
     "live.parameter": _h(
         "选择实时演化的单一活动参数。",
         "一次只扫一个轴，保证帧语义清晰。",
@@ -729,7 +882,7 @@ ZH_HELP: dict[str, str] = {
         "确认基线与当前帧后准备 ZIP。",
         "选择变更后需重新准备。",
     ),
-    "live.export.download": _h("下载已准备的 live_evolution.zip。", "离线分析。", "含 live_state.json 等。", "schema 2.1。"),
+    "live.export.download": _h("下载已准备的 live_evolution.zip。", "离线分析。", "含 live_state.json 等。", "schema 2.2。"),
     "sweep.spectrum_points": _h(
         "扫描中每一步谱图采样点数。",
         "控制内存与 ZIP 体积。",
@@ -767,11 +920,17 @@ ZH_HELP: dict[str, str] = {
     ),
     "sweep.trajectory_template": _h("下载合法列头的示例轨迹。", "减少格式错误。", "trajectory_template.csv。", "列名保持英文。"),
     "sweep.result_view": _h("在热图、瀑布图、峰演化与数据预览间切换。", "同一结果多视角解读。", "先热图总览再峰演化。", "显示范围裁剪不影响导出全量。"),
-    "sweep.peak_metric": _h("峰演化曲线的纵轴度量。", "F² 或强度定义不同。", "结构因子研究选 F²。", "全局相对便于跨步比振幅。"),
+    "sweep.peak_metric": _h("峰演化曲线的纵轴度量。", "F²、N·F²、R 与模型强度口径不同。", "实验峰面积后处理可按是否已校正 LP 选择两种 R。", "R 是未归一化理论参考因子，不是仪器绝对标定强度。"),
     "sweep.peak_series": _h("最多选择 12 条峰系列绘制演化。", "跟踪关键 HKL。", "勾选 110/020 等。", "消光峰以 0 保留以不断线。"),
-    "sweep.prepare": _h("生成 schema 2.1 扫描 ZIP。", "完整可复现数据包。", "结果有效且未过期时准备。", "过期结果按钮禁用。"),
+    "sweep.prepare": _h("生成 schema 2.2 扫描 ZIP。", "完整可复现数据包。", "结果有效且未过期时准备。", "过期结果按钮禁用。"),
     "sweep.download": _h("下载已准备的扫描 ZIP。", "Origin/Python 后处理。", "含矩阵与 checksum。", "文件名保持英文。"),
     "sweep.display_range": _h("仅裁剪热图/瀑布图显示窗。", "导出仍为全模拟窗口。", "放大局部 2θ。", "上下限须有序。"),
+    "sweep.display_coordinate": _h(
+        "只改变扫描结果图的结构横轴/纵轴显示坐标。",
+        "同一组 canonical y 结果可显示为 y、有符号 shuffle 或安全的 shuffle 幅度。",
+        "需要区分 y=0.25 两侧时使用有符号 shuffle。",
+        "不会重算、修改扫描结果或改变导出的 axis_value。",
+    ),
     "sweep.display_tth_min": _h("显示用 2θ 下限。", "视窗控制。", "例如 5°。", "须小于上限。"),
     "sweep.display_tth_max": _h("显示用 2θ 上限。", "视窗控制。", "例如 20°。", "须大于下限。"),
     "sweep.display_axis_min": _h("扫描轴显示下限。", "裁剪纵轴/扫描轴。", "对准关心区间。", "须小于上限。"),
@@ -783,7 +942,7 @@ ZH_HELP: dict[str, str] = {
         "调参满意后点击准备。",
         "配置变更会使旧包失效。",
     ),
-    "export.download": _h("下载 current_simulation.zip。", "存档与制图。", "含 Origin 辅助文件。", "schema 2.1。"),
+    "export.download": _h("下载 current_simulation.zip。", "存档与制图。", "含 Origin 辅助文件。", "schema 2.2。"),
     "fit.obs.upload": _h(
         "上传离散峰观测 CSV。",
         "把实验峰强导入反演拟合。",
@@ -807,6 +966,12 @@ ZH_HELP: dict[str, str] = {
         "决定 I_obs 的科学含义。",
         "有积分强度时优先峰面积。",
         "v1 峰高仅为等宽近似。",
+    ),
+    "fit.display_coordinate": _h(
+        "只改变 χ² 与 S 曲线的结构坐标显示方式。",
+        "拟合始终以 canonical Wyckoff y 计算；显示可切换为 y、有符号 shuffle 或幅度。",
+        "比较 y=0.25 两侧候选极小值时优先使用有符号 shuffle。",
+        "不会重算拟合或修改 y*；幅度模式会把上下分支拆开。",
     ),
     "fit.weight_mode": _h(
         "在行未给出 weight/sigma 时的全局权重方案。",

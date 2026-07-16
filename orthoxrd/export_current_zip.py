@@ -5,6 +5,7 @@ import zipfile
 from pathlib import Path
 
 from orthoxrd.config import config_hash, config_payload
+from orthoxrd.export_excel_packages import build_current_excel_workbook
 from orthoxrd.export_manifest import current_readme, manifest_json
 from orthoxrd.export_origin import (
     ORIGIN_COLUMN_MAP_FIELDS,
@@ -21,6 +22,7 @@ from orthoxrd.export_writer import (
     cleanup_export,
     create_export_path,
     finalize_export,
+    write_binary_entry,
     write_csv_entry,
     write_text_entry,
 )
@@ -30,6 +32,7 @@ from orthoxrd.ui_plot_state import PlotState
 CURRENT_EXPORT_FILES = (
     "spectrum.csv",
     "peaks.csv",
+    "analysis.xlsx",
     "config.json",
     "README.md",
     "plot_state.json",
@@ -53,6 +56,11 @@ def prepare_current_export(
         )
         metadata["peaks.csv"] = write_csv_entry(
             archive, "peaks.csv", CURRENT_PEAK_FIELDS, current_peak_rows(result)
+        )
+        metadata["analysis.xlsx"] = write_binary_entry(
+            archive,
+            "analysis.xlsx",
+            build_current_excel_workbook(result),
         )
         metadata["config.json"] = write_text_entry(
             archive,

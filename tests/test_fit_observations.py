@@ -5,6 +5,7 @@ import pytest
 from orthoxrd.fit_models import FitError
 from orthoxrd.fit_observations import (
     OBSERVATION_CSV_TEMPLATE,
+    observation_csv_editor_template,
     observation_csv_template,
     parse_observation_csv,
 )
@@ -18,6 +19,13 @@ def test_template_is_stable_and_documented() -> None:
     assert "weight" in text.splitlines()[0]
     assert "sigma" in text.splitlines()[0]
     assert "notes" in text.splitlines()[0]
+
+
+def test_editor_template_is_header_only_while_download_keeps_examples() -> None:
+    editor_text = observation_csv_editor_template()
+
+    assert editor_text == OBSERVATION_CSV_TEMPLATE.splitlines(keepends=True)[0]
+    assert len(parse_observation_csv(observation_csv_template())) == 3
 
 
 def test_valid_csv_parses_to_observation_records() -> None:

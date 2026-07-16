@@ -14,6 +14,7 @@ from orthoxrd.constants import (
 from orthoxrd.i18n import t, th
 from orthoxrd.models import LatticeParameters
 from orthoxrd.presets import LATTICE_PRESETS
+from orthoxrd.structure_coordinates import StructureBranch, structure_branch_from_y
 from orthoxrd.structure_factor import signed_shuffle_from_y, y_from_shuffle_magnitude
 from orthoxrd.structure_state import StructureState
 
@@ -23,6 +24,7 @@ B_KEY = "structure_b"
 C_KEY = "structure_c"
 Y_KEY = "structure_y"
 SHUFFLE_KEY = "structure_shuffle"
+BRANCH_KEY = "structure_shuffle_branch"
 
 
 def render_structure_panel() -> StructureState:
@@ -49,6 +51,9 @@ def _ensure_structure_defaults() -> None:
         _set_structure_values(first_preset)
     if A_KEY not in st.session_state:
         _set_structure_values(str(st.session_state[PRESET_KEY]))
+    if BRANCH_KEY not in st.session_state:
+        current_y = float(st.session_state[Y_KEY])
+        st.session_state[BRANCH_KEY] = "upper" if current_y > 0.25 else "lower"
 
 
 def _set_structure_values(preset_name: str) -> None:
@@ -56,8 +61,7 @@ def _set_structure_values(preset_name: str) -> None:
     st.session_state[A_KEY] = preset.lattice.a
     st.session_state[B_KEY] = preset.lattice.b
     st.session_state[C_KEY] = preset.lattice.c
-    st.session_state[Y_KEY] = preset.y
-    st.session_state[SHUFFLE_KEY] = abs(signed_shuffle_from_y(preset.y))
+    set_structure_y_state(preset.y)
 
 
 def _apply_selected_preset() -> None:
@@ -65,17 +69,44 @@ def _apply_selected_preset() -> None:
 
 
 def _sync_shuffle_from_y() -> None:
-    y_value = float(st.session_state[Y_KEY])
-    st.session_state[SHUFFLE_KEY] = abs(signed_shuffle_from_y(y_value))
+    set_structure_y_state(float(st.session_state[Y_KEY]))
 
 
 def _sync_y_from_shuffle() -> None:
     shuffle_magnitude = float(st.session_state[SHUFFLE_KEY])
-    current_y = float(st.session_state[Y_KEY])
-    st.session_state[Y_KEY] = y_from_shuffle_magnitude(
-        shuffle_magnitude,
-        upper_branch=current_y > 0.25,
+    branch: StructureBranch = (
+        "upper" if st.session_state[BRANCH_KEY] == "upper" else "lower"
     )
+    set_structure_shuffle_state(shuffle_magnitude, branch)
+
+
+def set_structure_y_state(
+    y_value: float,
+    *,
+    reference_branch: StructureBranch | None = None,
+) -> None:
+    """Synchronise canonical y, shuffle magnitude, and the editable magnitude branch."""
+    st.session_state[Y_KEY] = y_value
+    st.session_state[SHUFFLE_KEY] = abs(signed_shuffle_from_y(y_value))
+    branch = structure_branch_from_y(y_value)
+    if branch is not None:
+        st.session_state[BRANCH_KEY] = branch
+    elif reference_branch is not None:
+        st.session_state[BRANCH_KEY] = reference_branch
+    elif BRANCH_KEY not in st.session_state:
+        st.session_state[BRANCH_KEY] = "lower"
+
+
+def set_structure_shuffle_state(
+    shuffle_magnitude: float,
+    branch: StructureBranch,
+) -> None:
+    """Resolve an explicitly branched magnitude and synchronise all structure widgets."""
+    y_value = y_from_shuffle_magnitude(
+        shuffle_magnitude,
+        upper_branch=branch == "upper",
+    )
+    set_structure_y_state(y_value, reference_branch=branch)
 
 
 def _render_lattice_inputs() -> LatticeParameters:
@@ -141,8 +172,22 @@ def _render_shuffle_inputs() -> float:
             on_change=_sync_y_from_shuffle,
             help=th("structure.shuffle"),
         )
+        st.segmented_control(
+            t("structure.branch"),
+            ["lower", "upper"],
+            format_func=lambda value: t(f"structure.branch.{value}"),
+            key=BRANCH_KEY,
+            on_change=_sync_y_from_shuffle,
+            help=th("structure.branch"),
+        )
     with signed_col:
         signed_shuffle = signed_shuffle_from_y(float(y_value))
+        branch = structure_branch_from_y(float(y_value))
+        branch_label = (
+            t("structure.branch.reference")
+            if branch is None
+            else t(f"structure.branch.{branch}")
+        )
         st.markdown(
             """
             <div class="xrd-readout-card">
@@ -153,7 +198,10 @@ def _render_shuffle_inputs() -> float:
             """.format(
                 label=t("structure.signed_label"),
                 value=f"{signed_shuffle:+.4f}",
-                meta=t("structure.signed_meta"),
+                meta=t(
+                    "structure.signed_meta",
+                    branch=branch_label,
+                ),
             ),
             unsafe_allow_html=True,
         )

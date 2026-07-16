@@ -38,9 +38,9 @@ def run_discrete_peak_fit(
     objective as ``peak_area`` — see ``FitOptions``).
     """
     options = fit_options if fit_options is not None else FitOptions()
-    _validate_observations(observations)
-    catalog = _build_peak_catalog(config)
-    matched = _match_observations(observations, catalog, options)
+    matched = list(
+        validate_discrete_peak_fit_observations(config, observations, options)
+    )
     warnings: list[str] = []
     for item in matched:
         obs = item.observation
@@ -51,17 +51,6 @@ def run_discrete_peak_fit(
                 "matching (forward model enumerates the non-negative octant)"
             )
     included = [item for item in matched if item.included]
-    if len(included) < 2:
-        raise FitError(
-            (
-                FitIssue(
-                    0,
-                    "observations",
-                    str(len(included)),
-                    "at least two valid peaks are required after exclusions",
-                ),
-            )
-        )
 
     y_grid = _uniform_grid(options.y_start, options.y_stop, options.grid_points)
     model_matrix, vanishing = _model_intensity_matrix(config, included, y_grid, options)
@@ -159,6 +148,35 @@ def run_discrete_peak_fit(
         local_minima=tuple(local_minima),
         warnings=tuple(warnings),
     )
+
+
+def validate_discrete_peak_fit_observations(
+    config: SimulationConfig,
+    observations: Sequence[PeakObservation],
+    fit_options: FitOptions | None = None,
+) -> tuple[MatchedObservation, ...]:
+    """Validate rows against the active model before the expensive y-grid scan.
+
+    This gate covers row values, weights, duplicate series, HKL availability,
+    and radiation-line resolution. Peaks that vanish over the requested y grid
+    remain a run-time exclusion because identifying them is part of the scan.
+    """
+    options = fit_options if fit_options is not None else FitOptions()
+    _validate_observations(observations)
+    matched = _match_observations(observations, _build_peak_catalog(config), options)
+    included = [item for item in matched if item.included]
+    if len(included) < 2:
+        raise FitError(
+            (
+                FitIssue(
+                    0,
+                    "observations",
+                    str(len(included)),
+                    "at least two valid peaks are required after model matching",
+                ),
+            )
+        )
+    return tuple(matched)
 
 
 def closed_form_scale(

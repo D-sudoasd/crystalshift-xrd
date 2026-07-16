@@ -1,4 +1,5 @@
 import csv
+import hashlib
 import io
 import json
 import zipfile
@@ -13,6 +14,7 @@ from orthoxrd.export_writer import cleanup_export
 from orthoxrd.live import LivePreviewConfig, generate_live_preview
 from orthoxrd.models import LatticeParameters, RadiationLine
 from orthoxrd.ui_plot_state import PlotState
+from tests.xlsx_assertions import xlsx_sheet_names
 
 
 def _config() -> SimulationConfig:
@@ -52,6 +54,7 @@ def test_live_export_contains_float64_analysis_tables_and_frame_comparison() -> 
     with zipfile.ZipFile(io.BytesIO(package)) as archive:
         assert set(archive.namelist()) == set(LIVE_EXPORT_FILES)
         manifest = json.loads(archive.read("manifest.json"))
+        workbook = archive.read("analysis.xlsx")
         comparison = list(
             csv.DictReader(
                 io.StringIO(
@@ -61,8 +64,19 @@ def test_live_export_contains_float64_analysis_tables_and_frame_comparison() -> 
         )
         live_state = json.loads(archive.read("live_state.json"))
 
-    assert manifest["schema_version"] == "2.1"
+    assert manifest["schema_version"] == "2.2"
     assert manifest["export_kind"] == "live"
+    assert "analysis.xlsx" in manifest["files"]
+    assert hashlib.sha256(workbook).hexdigest() == manifest["files"]["analysis.xlsx"][
+        "sha256"
+    ]
+    assert {
+        "README",
+        "Parameters",
+        "Columns",
+        "SweepSteps",
+        "FrameComparison",
+    } <= set(xlsx_sheet_names(workbook))
     assert len(comparison) == 101
     assert live_state["baseline_index"] != live_state["current_index"]
     assert comparison[20]["baseline_q_A_inv"] != comparison[20]["current_q_A_inv"]

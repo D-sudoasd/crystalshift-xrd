@@ -8,7 +8,11 @@ from orthoxrd import __version__
 from orthoxrd.batch_models import SweepResult
 from orthoxrd.config import SimulationConfig, config_json, config_payload
 from orthoxrd.export_rows import sweep_step_rows
-from orthoxrd.export_schema import PEAK_EVOLUTION_FIELDS, SPECTRA_LONG_FIELDS
+from orthoxrd.export_schema import (
+    EXPORT_SCHEMA_VERSION,
+    PEAK_EVOLUTION_FIELDS,
+    SPECTRA_LONG_FIELDS,
+)
 from orthoxrd.export_writer import ExportFileMeta
 
 
@@ -33,9 +37,10 @@ def manifest_json(
         "energy": "keV",
         "relative_intensity": "percent",
         "model_intensity": "arbitrary calculated units",
+        "reference_R_hkl": "model structure-factor units * angstrom^-6",
     }
     common = {
-        "schema_version": "2.1",
+        "schema_version": EXPORT_SCHEMA_VERSION,
         "app_version": __version__,
         "export_kind": export_kind,
         "generated_at_utc": datetime.now(UTC).isoformat(),
@@ -93,6 +98,21 @@ def manifest_json(
                 "I_raw": (
                     "legacy alias for calculated model peak intensity; not experimental raw data"
                 ),
+                "multiplicity_structure_factor_sq": "N * F2",
+                "theoretical_intensity_unscaled": "N * F2 * LP",
+                "material_scattering_factor_R_hkl": "N * F2 * LP / V_cell^2",
+                "material_scattering_factor_R_hkl_no_lp": "N * F2 / V_cell^2",
+                "phase_relative_R_hkl_pct": (
+                    "100 * R_hkl / max(R_hkl) within the same radiation line"
+                ),
+                "phase_relative_R_hkl_no_lp_pct": (
+                    "100 * R_hkl_no_LP / max(R_hkl_no_LP) within the same radiation line"
+                ),
+                "reference_R_scope": (
+                    "unnormalized theoretical reference factors independent of applied correction "
+                    "toggles and radiation line weight; not instrument-calibrated "
+                    "absolute intensity"
+                ),
             },
             "normalization": {
                 "local": "each sweep step scaled to max 100",
@@ -138,9 +158,20 @@ def current_readme() -> str:
 
 Files
 - spectrum.csv: profile on the common two-theta grid.
-- peaks.csv: Bragg reflections and complete model-intensity decomposition.
+- peaks.csv: Bragg reflections, current y/lattice/radiation, geometry, structure
+  factor, model-intensity decomposition, and R_hkl reference factors.
+- analysis.xlsx: Excel-oriented mirror with README, Parameters, and Columns sheets.
 - config.json: exact simulation inputs.
 - manifest.json: schema, formulas, units, limits, and checksums.
+
+Reference R factors
+- material_scattering_factor_R_hkl = N * F2 * LP / V_cell^2.
+- material_scattering_factor_R_hkl_no_lp = N * F2 / V_cell^2.
+- The no-LP convention is for integrated experimental areas that have already
+  received the corresponding LP, polarization, or geometry correction.
+- Both are unnormalized theoretical model reference factors, not measured or
+  instrument-calibrated absolute intensities. They exclude texture, absorption,
+  and experimental peak-integration error.
 
 Origin
 1. Import spectrum.csv as comma-delimited text with the first row as Long Name.
@@ -167,11 +198,16 @@ Mapping
 - series_map.csv maps stable series IDs to radiation line and HKL.
 - Long tables support filtering and tidy-data plotting.
 - Matrix tables are ready for Origin contour/heatmap workflows.
+- analysis.xlsx mirrors the analysis tables for Excel viewing and preserves identifiers as text.
 
 Intensity
 - model is unnormalized calculated profile or peak intensity.
 - global uses one maximum for the sweep and preserves amplitude evolution.
 - local normalizes each step separately and is only for shape comparison.
+- peak_evolution_long.csv includes F2, N*F2, N*F2*LP, and both R_hkl
+  conventions at every y or trajectory step.
+- R_hkl_with_LP = N * F2 * LP / V_cell^2; R_hkl_no_LP = N * F2 / V_cell^2.
+  These are model reference factors, not instrument-calibrated absolute intensity.
 
 Origin heatmap
 1. Import spectra_matrix_global.csv.
@@ -193,7 +229,9 @@ Python heatmap
 
 HKL evolution
 Import peak_evolution_long.csv and group by series_id, or use one of the
-peak_evolution_matrix files for direct multi-curve plotting.
+peak_evolution_matrix files for direct multi-curve plotting. Separate matrices
+are provided for F2, N_F2, R_hkl_with_LP, R_hkl_no_LP, I_model, and
+I_rel_global.
 """
 
 
@@ -232,6 +270,7 @@ Files
 - residual_at_best.csv: per-peak residuals at the selected best point only
   (weight column is resolved_weight used in chi2).
 - local_minima.csv: neighbourhood minima on the grid chi2 curve.
+- analysis.xlsx: Excel-oriented process tables plus parameter and column explanations.
 - config.json: simulation payload (including panel wyckoff_y at Run — not free),
   fit options, notes explaining simulation.y vs best.y, and best summary.
 - manifest.json: schema, formulas, units, limits, and file checksums.

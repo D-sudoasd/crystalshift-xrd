@@ -16,8 +16,10 @@ EN_TEXT: dict[str, str] = {
     "lang.label": "Interface language",
     "lang.zh": "中文",
     "lang.en": "English",
+    "common.on": "on",
+    "common.off": "off",
     "app.page_title": "CrystalShift XRD",
-    "app.model_tag": "Cmcm 4c | schema 2.1",
+    "app.model_tag": "Cmcm 4c | schema 2.2",
     "app.subtitle": (
         "Kinematic powder model for lattice, Wyckoff-y, shuffle, and incident-radiation studies."
     ),
@@ -30,6 +32,18 @@ EN_TEXT: dict[str, str] = {
     "app.summary.energy": "energy (keV)",
     "app.summary.lambda": "lambda (A)",
     "app.summary.hash": "config hash",
+    "app.active_model.composition_na": "not applicable (unit scatterer)",
+    "app.active_model_details": (
+        "**Active model** · Scattering: {scattering} · Composition: {composition} · "
+        "2theta {tth_min:g}-{tth_max:g} deg · {profile} · FWHM {fwhm:.4f} deg · "
+        "Corrections: LP {lp} · multiplicity {multiplicity} · volume 1/V {volume}"
+    ),
+    "inputs.required_review": (
+        '<div class="xrd-note xrd-note-warn"><strong>Review before analysis or export:</strong> '
+        "incident radiation, lattice, Wyckoff y, and signed/magnitude shuffle, plus "
+        "scattering/composition, "
+        "2theta window, profile, and intensity corrections in Material and calculation settings.</div>"
+    ),
     "nav.label": "Result view",
     "nav.pattern": "Pattern",
     "nav.peaks": "Peaks",
@@ -77,8 +91,12 @@ EN_TEXT: dict[str, str] = {
     "structure.c": "c (A)",
     "structure.y": "Wyckoff y ({ymin:.3f}-{ymax:.3f})",
     "structure.shuffle": "Basal shuffle magnitude ({smin:.3f}-{smax:.3f})",
+    "structure.branch": "Shuffle-magnitude branch",
     "structure.signed_label": "signed shuffle",
-    "structure.signed_meta": "2(y - 0.25)",
+    "structure.signed_meta": "2(y - 0.25) · current {branch}",
+    "structure.branch.lower": "lower branch",
+    "structure.branch.upper": "upper branch",
+    "structure.branch.reference": "zero-shuffle reference",
     "structure.relation_note": (
         '<div class="xrd-note"><strong>y / shuffle relation</strong> '
         "signed = 2(y - 0.25); magnitude = abs(signed). "
@@ -101,7 +119,19 @@ EN_TEXT: dict[str, str] = {
         "Lower branch: y = 0.25 - shuffle_magnitude / 2; "
         "upper branch: y = 0.25 + shuffle_magnitude / 2."
     ),
-    "advanced.popover": "Advanced settings",
+    "structure.context.caption": (
+        "Active structure: y={y:.6f} | signed shuffle={signed:+.6f} | "
+        "shuffle magnitude={magnitude:.6f} | {branch}. "
+        "These coordinates modulate structure factors and model intensity; the physical "
+        "Pattern/Peaks axis remains 2theta, q, or d."
+    ),
+    "structure.plot.cell": "Cmcm unit cell",
+    "structure.plot.reference": "y=0.25 reference sites",
+    "structure.plot.current": "Current 4c sites",
+    "structure.plot.shuffle_path": "Shuffle paths along b",
+    "structure.plot.shuffle_arrow": "Shuffle direction",
+    "advanced.popover": "Material and calculation settings (review)",
+    "advanced.intro": "These settings change which peaks appear, their profile, and theoretical intensity. The active values remain visible in the model summary after this panel closes.",
     "advanced.scattering_section": "##### Scattering",
     "advanced.window_section": "##### Simulation window",
     "advanced.profile_section": "##### Peak profile",
@@ -117,6 +147,9 @@ EN_TEXT: dict[str, str] = {
     "advanced.points": "Spectrum points",
     "advanced.cutoff": "Table cutoff (%)",
     "advanced.profile": "Peak shape",
+    "advanced.profile.pseudo_voigt": "Pseudo-Voigt",
+    "advanced.profile.gaussian": "Gaussian",
+    "advanced.profile.lorentzian": "Lorentzian",
     "advanced.fwhm": "FWHM (deg 2theta)",
     "advanced.eta": "Pseudo-Voigt eta",
     "advanced.lp": "Lorentz-polarization",
@@ -144,6 +177,10 @@ EN_TEXT: dict[str, str] = {
     ),
     "pattern.download_spectrum": "Spectrum CSV",
     "pattern.download_peaks": "Peak table CSV",
+    "export.csv_excel_hint.current": (
+        "CSV is for Origin/Python or other machine processing. For Excel, use "
+        "analysis.xlsx in the current-result ZIP to preserve leading-zero HKLs and read the notes."
+    ),
     "plot.display_range": "Display range",
     "plot.display_caption": "Display-only crop. Simulation and exported rows remain unchanged.",
     "plot.x_min": "X minimum",
@@ -168,6 +205,7 @@ EN_TEXT: dict[str, str] = {
         "Showing {shown:,} of {total:,} calculated peak rows. "
         "Scroll the table horizontally for all fields; CSV exports include every column."
     ),
+    "peaks.empty_filtered": "No peaks match the active filters. Broaden the HKL, radiation-line, intensity, or 2theta criteria.",
     "peaks.selected": (
         "Selected {line} {hkl} | 2theta={two_theta:.6f} deg | {series_id}"
     ),
@@ -189,9 +227,27 @@ EN_TEXT: dict[str, str] = {
     "f2.empty": "Select at least one HKL series.",
     "f2.preview": "Data preview",
     "f2.download": "F2 evolution CSV",
+    "f2.download_excel": "F2 evolution Excel",
+    "export.csv_excel_hint.f2": (
+        "CSV is for Origin/Python or other machine processing. Use f2_evolution.xlsx in "
+        "Excel to preserve leading-zero HKLs and read the Parameters and Columns notes."
+    ),
     "f2.start": "Evolution start",
     "f2.stop": "Evolution stop",
     "f2.points": "Evolution points",
+    "f2.structure_preview.title": "##### Cmcm 4c basal-displacement structure",
+    "f2.structure_preview.slider": "Structure preview coordinate",
+    "f2.structure_preview.caption": (
+        "Grey marks the zero-shuffle y=0.25 reference sites in the same Cmcm cell; "
+        "cyan marks the current sites. Motion is strictly along b, with single-atom "
+        "|Δb| = b|y−0.25|. This slider changes only the diagram and does not write back "
+        "to the main structure inputs."
+    ),
+    "f2.structure_preview.help": (
+        "Preview the real 4c sites and displacement paths for the selected Wyckoff-y, "
+        "signed-shuffle, or shuffle-magnitude coordinate. It does not recalculate the "
+        "active simulation or change exports."
+    ),
     "f2.stop_error": "Evolution stop must be greater than start.",
     "f2.x_title.y": "Wyckoff y",
     "f2.x_title.signed_shuffle": "signed shuffle = 2(y - 0.25)",
@@ -227,7 +283,7 @@ EN_TEXT: dict[str, str] = {
         "the final frame when the slider is released."
     ),
     "live.export.prepare": "Prepare live evolution ZIP",
-    "live.export.spinner": "Building schema 2.1 live analysis package...",
+    "live.export.spinner": "Building schema 2.2 live analysis package...",
     "live.export.caption_prepare": "Prepare the full-precision live ZIP on demand.",
     "live.export.caption_changed": "The live selection changed. Prepare the ZIP again.",
     "live.export.download": "Download live_evolution.zip",
@@ -267,6 +323,9 @@ EN_TEXT: dict[str, str] = {
     "sweep.kpi.global_max": "global profile max",
     "sweep.peak_metric": "Peak metric",
     "sweep.metric.F2": "F2",
+    "sweep.metric.N_F2": "N x F2 (multiplicity x structure factor)",
+    "sweep.metric.R_hkl_with_LP": "R_hkl (with LP, model reference)",
+    "sweep.metric.R_hkl_no_LP": "R_hkl_no_LP (model reference)",
     "sweep.metric.I_model": "Model peak intensity",
     "sweep.metric.I_rel_global": "Global relative peak intensity",
     "sweep.peak_series": "Peak series (maximum 12)",
@@ -276,8 +335,8 @@ EN_TEXT: dict[str, str] = {
         "Preview is limited to 500 peak rows. The ZIP contains the complete tables."
     ),
     "sweep.prepare": "Prepare sweep ZIP",
-    "sweep.spinner": "Streaming schema 2.1 files into ZIP...",
-    "sweep.prepare_caption": "Run the active configuration, then prepare the schema 2.1 ZIP.",
+    "sweep.spinner": "Streaming schema 2.2 files into ZIP...",
+    "sweep.prepare_caption": "Run the active configuration, then prepare the schema 2.2 ZIP.",
     "sweep.download": "Download sweep ZIP",
     "sweep.export_size": "{kib:.1f} KiB | SHA-256 {sha}...",
     "sweep.calc_spinner": "Calculating sweep...",
@@ -314,6 +373,11 @@ EN_TEXT: dict[str, str] = {
         "shuffle_branch, energy_keV, wavelength_A. Limit: 1-1001 rows."
     ),
     "sweep.display_range": "Sweep display range",
+    "sweep.display_coordinate": "Structure display coordinate",
+    "sweep.display_coordinate_cross_branch": (
+        "This y sweep crosses y=0.25. Shuffle magnitude would fold the lower and "
+        "upper branches onto the same values, so only y and signed shuffle are offered."
+    ),
     "sweep.display_caption": (
         "Display-only crop. The ZIP always contains the complete simulation window."
     ),
@@ -332,7 +396,7 @@ EN_TEXT: dict[str, str] = {
     "sweep.plot.intensity": "intensity",
     "export.prepare": "Prepare current ZIP",
     "export.spinner": "Preparing current simulation export...",
-    "export.caption": "Schema 2.1 export is prepared on demand.",
+    "export.caption": "Schema 2.2 export is prepared on demand.",
     "export.expired": "Prepared export expired. Prepare it again.",
     "export.download": "Download current ZIP",
     "export.size": "{kib:.1f} KiB | SHA-256 {sha}...",
@@ -355,7 +419,20 @@ EN_TEXT: dict[str, str] = {
         '<div class="xrd-note">Fit result matches the active configuration and '
         "observations.</div>"
     ),
-    "fit.obs.header": "##### Observations",
+    "fit.context.header": "##### Fixed fit context (review first)",
+    "fit.context.details": (
+        "These quantities are not refined: a={a:.6g} Å, b={b:.6g} Å, c={c:.6g} Å; "
+        "radiation={radiation}; scattering={scattering} ({composition}); "
+        "2theta={tth_min:.6g}–{tth_max:.6g} deg, HKL limit={hkl_max}; "
+        "LP={lp}, multiplicity={multiplicity}, 1/V={volume}."
+    ),
+    "fit.context.profile_excluded": (
+        "This is a discrete peak-strength fit: profile shape, FWHM, background, and "
+        "peak-position offsets are not refined. Peak height is only an equal-width proxy; "
+        "use peak area when integrated intensities are available."
+    ),
+    "fit.observable.header": "##### 1. Choose the experimental observable first",
+    "fit.obs.header": "##### 2. Enter at least two real observed peaks",
     "fit.obs.upload": "Observation CSV",
     "fit.obs.editor": "Observation table (CSV text)",
     "fit.obs.template": "Download observation template CSV",
@@ -369,7 +446,15 @@ EN_TEXT: dict[str, str] = {
         "Every observation row must set line or line_id (e.g. line_00), "
         "or matching will hard-fail with multi-line ambiguity."
     ),
-    "fit.options.header": "##### Fit options",
+    "fit.obs.invalid": "The current observation table cannot run: {error}",
+    "fit.obs.need_two": (
+        "{count} valid observation(s) detected; at least 2 real peaks are required to run."
+    ),
+    "fit.options.header": "##### 3. Set weights and the y scan",
+    "fit.options.scan_note": (
+        "The full y grid exposes multiple local minima; local refinement improves precision "
+        "only around the best grid point."
+    ),
     "fit.observable_mode": "Observable mode",
     "fit.mode.peak_area": "Peak area (preferred)",
     "fit.mode.peak_height": "Peak height (equal-width proxy)",
@@ -384,7 +469,7 @@ EN_TEXT: dict[str, str] = {
         "numeric objective matches peak-area mode; S absorbs any common constant. "
         "Prefer peak-area when integral intensities are available."
     ),
-    "fit.run": "Run fit",
+    "fit.run": "4. Run fit",
     "fit.err.y_range": "y grid stop must be greater than or equal to y grid start.",
     "fit.err.obs_encoding": (
         "Observation file is not valid UTF-8 text. Save as UTF-8 CSV/TXT and upload again."
@@ -405,9 +490,34 @@ EN_TEXT: dict[str, str] = {
     "fit.kpi.peaks": "peaks used",
     "fit.kpi.mode": "observable",
     "fit.plot.chi2": "χ²(y)",
+    "fit.plot.scale": "Optimal scale S(y)",
+    "fit.plot.refine_trace": "Local refine trace",
+    "fit.plot.best": "Best point",
     "fit.plot.local_minima": "Local minima",
     "fit.plot.x_y": "Wyckoff y",
     "fit.plot.y_chi2": "χ²(y)",
+    "fit.plot.y_scale": "Optimal scale S(y)",
+    "fit.plot.parity_line": "Ideal agreement",
+    "fit.plot.observations": "Observed and fitted peaks",
+    "fit.plot.x_observed": "Observed peak strength I_obs",
+    "fit.plot.y_fitted": "Fitted peak strength S* · I_model",
+    "fit.plot.chi2_contribution": "Per-peak χ² contribution",
+    "fit.plot.x_hkl": "HKL",
+    "fit.plot.y_chi2_contribution": "w · residual²",
+    "fit.diagnostics.header": "##### Fit-path and agreement diagnostics",
+    "fit.display_coordinate": "Structure display coordinate",
+    "fit.display_coordinate_magnitude_note": (
+        "Shuffle magnitude is two-to-one across y=0.25. Lower and upper branches are "
+        "drawn separately and are never joined through the zero-shuffle point."
+    ),
+    "fit.diagnostics.chi2": "χ² grid, local refine trace, local minima, and final best point.",
+    "fit.diagnostics.scale": "Closed-form optimal scale S(y) at each structure coordinate.",
+    "fit.diagnostics.parity": (
+        "Observed peak strength versus best-fit strength; points nearer the diagonal agree better."
+    ),
+    "fit.diagnostics.contributions": (
+        "Per-HKL w·residual²; the bar total reconstructs the best χ²."
+    ),
     "fit.local_minima.header": "##### Local minimum candidates",
     "fit.local_minima.empty": "No neighbourhood minima on the grid χ² curve.",
     "fit.residuals.header": "##### Residuals at best",
@@ -423,6 +533,24 @@ EN_TEXT: dict[str, str] = {
     "fit.download": "Download fit ZIP",
     "fit.export_size": "{kib:.1f} KiB | SHA-256 {sha}...",
     "method.title": "Method and interpretation",
+    "method.workflow": """
+#### First-use order
+
+1. **Review inputs**: before analysis or export, check incident radiation, lattice, Wyckoff y, signed shuffle, shuffle magnitude, and Material and calculation settings.
+2. **Choose the question**: lattice and radiation control peak positions; Wyckoff y, signed/magnitude shuffle, scattering, and corrections control intensities; use Live or Sweep for evolution.
+3. **Plot before table**: confirm the trend and anomalies first, then inspect the exact HKL and values in Peaks or Data preview.
+4. **Review before export**: confirm the active model summary, normalization, and valid-result state before preparing a package.
+""",
+    "method.view_guide": """
+#### What each view is for
+
+- **Pattern**: inspect peak positions, profiles, sticks, and one-parameter live evolution for the active model.
+- **Peaks**: filter radiation lines and HKLs, then inspect F2, peak position, and applied intensity factors.
+- **F2 evolution**: isolate the unit-scatterer structure factor and relate Wyckoff y and signed/magnitude shuffle to real Cmcm 4c motion in a unit-cell diagram.
+- **Sweep**: calculate a range or row-wise CSV trajectory; heatmaps, waterfalls, and peak evolution can display y, signed shuffle, or safe magnitude coordinates.
+- **Fit**: estimate y and scale S from experimental peak areas or equal-width peak heights, then inspect χ², S, observed-versus-fitted agreement, and per-peak residuals; not full-pattern refinement.
+- **Method**: reference formulas, normalization definitions, fit assumptions, and model boundaries.
+""",
     "method.left": """
 #### Cmcm 4c model
 
@@ -436,12 +564,28 @@ Cmcm 4c site. The Wyckoff parameter controls the basal shuffle:
 Changing y changes the structure factor but does not change d-spacing.
 Changing a, b, or c changes d-spacing and the Bragg position.
 
+The diagram's **y=0.25** state is the zero-shuffle special-position reference
+inside the same Cmcm cell. It is not identified as another parent phase without
+independent evidence. Each 4c site's displacement from that reference is
+**±b(y−0.25) = ±b·shuffle_signed/2**, strictly along b.
+
 #### Peak intensity
 
 **I_model_peak = F2 x applied_multiplicity x applied_LP x applied_volume x line_weight**
 
 Each applied factor is exported separately. applied_volume is either 1/V
 or 1, preserving the selected model contract.
+
+The export also provides reference factors that do not use correction toggles
+or radiation-line weight:
+
+**R_hkl (with LP) = N x F2 x LP / V^2**
+
+**R_hkl_no_LP = N x F2 / V^2**
+
+Use the no-LP convention only when the experimental integrated intensity has
+already received the corresponding LP, polarization, or geometry correction.
+Neither quantity is an instrument-calibrated absolute intensity.
 
 #### Discrete peak intensity fit (not Rietveld)
 
@@ -563,6 +707,12 @@ EN_HELP: dict[str, str] = {
         "Physical amplitude of the shuffle; maps to y once a branch is chosen.",
         "Sweep 0 to 0.166 for a typical lower-branch path.",
         "Magnitude omits sign; sign comes from y relative to 0.25.",
+    ),
+    "structure.branch": _h(
+        "Choose which y branch a non-negative shuffle magnitude maps onto.",
+        "At y=0.25 the magnitude alone is ambiguous, so this choice remains visible.",
+        "Lower uses y=0.25-s/2; upper uses y=0.25+s/2.",
+        "Editing y updates the branch; at zero shuffle the latest valid branch is retained.",
     ),
     "advanced.scattering": _h(
         "Unit scatterer versus composition-weighted form factors.",
@@ -743,7 +893,24 @@ EN_HELP: dict[str, str] = {
     "f2.start": _h("Evolution axis start.", "Lower sampling bound.", "0 for shuffle magnitude.", "Must be less than stop."),
     "f2.stop": _h("Evolution axis stop.", "Upper sampling bound.", "0.166 for lower-branch shuffle.", "Must exceed start."),
     "f2.points": _h("Number of samples on the curve.", "Controls smoothness.", "301 is usually enough.", "Range 10-2000."),
-    "f2.download": _h("Export long-form F2 evolution.", "Post-processing.", "f2_evolution.csv.", "Columns axis_value,hkl,F2."),
+    "f2.download": _h(
+        "Export long-form F2 evolution.",
+        "Post-processing with both the selected display axis and canonical y.",
+        "f2_evolution.csv.",
+        "Columns include axis_value, hkl, F2, axis_code, y, signed/magnitude shuffle, and branch.",
+    ),
+    "f2.download_excel": _h(
+        "Download the same F2 evolution rows as a native Excel workbook.",
+        "HKL labels such as 021 remain text with leading zeroes intact.",
+        "README, Parameters, and Columns sheets explain the model, path, and fields.",
+        "Use the CSV instead for Origin/Python pipelines.",
+    ),
+    "f2.structure_preview.slider": _h(
+        "Select the Wyckoff-y, signed-shuffle, or shuffle-magnitude coordinate shown by the structure diagram.",
+        "Maps the abstract evolution coordinate to real Cmcm 4c motion along b.",
+        "Use it to inspect one coordinate alongside the F2 curves.",
+        "Preview only: it does not write the main inputs, recalculate, or change exports.",
+    ),
     "live.parameter": _h(
         "Single active axis for live evolution.",
         "One axis at a time keeps frames unambiguous.",
@@ -763,7 +930,7 @@ EN_HELP: dict[str, str] = {
         "Prepare after choosing baseline and current frames.",
         "Re-prepare if the selection changes.",
     ),
-    "live.export.download": _h("Download live_evolution.zip.", "Offline analysis.", "Includes live_state.json.", "Schema 2.1."),
+    "live.export.download": _h("Download live_evolution.zip.", "Offline analysis.", "Includes live_state.json.", "Schema 2.2."),
     "sweep.spectrum_points": _h(
         "Spectrum samples per sweep step.",
         "Controls memory and ZIP size.",
@@ -801,11 +968,17 @@ EN_HELP: dict[str, str] = {
     ),
     "sweep.trajectory_template": _h("Download a valid header template.", "Reduces format errors.", "trajectory_template.csv.", "Column names stay English."),
     "sweep.result_view": _h("Switch heatmap, waterfall, peak evolution, or data preview.", "Multiple views of one result.", "Heatmap first, then peak evolution.", "Display crop does not shrink exports."),
-    "sweep.peak_metric": _h("Vertical metric for peak-evolution curves.", "F2 versus intensity definitions differ.", "Use F2 for structure-factor studies.", "Global relative keeps cross-step amplitudes."),
+    "sweep.peak_metric": _h("Vertical metric for peak-evolution curves.", "F2, N x F2, R, and model intensity use different definitions.", "Choose the R convention according to whether experimental areas are LP-corrected.", "R is an unnormalized model reference factor, not instrument-calibrated absolute intensity."),
     "sweep.peak_series": _h("Track up to 12 peak series.", "Follow key HKLs across the sweep.", "Select 110/020 etc.", "Extinct peaks stay as zeros so curves do not break."),
-    "sweep.prepare": _h("Build the schema 2.1 sweep ZIP.", "Full reproducible package.", "Available when the result is fresh.", "Disabled while stale."),
+    "sweep.prepare": _h("Build the schema 2.2 sweep ZIP.", "Full reproducible package.", "Available when the result is fresh.", "Disabled while stale."),
     "sweep.download": _h("Download the prepared sweep ZIP.", "Origin/Python workflows.", "Includes matrices and checksums.", "English file names."),
     "sweep.display_range": _h("Crop only heatmap/waterfall display windows.", "ZIP still holds the full simulation window.", "Zoom a 2theta region.", "Bounds must be ordered."),
+    "sweep.display_coordinate": _h(
+        "Change only the structure coordinate shown on sweep-result plots.",
+        "The same canonical-y result can be viewed as y, signed shuffle, or safe shuffle magnitude.",
+        "Use signed shuffle when the two sides of y=0.25 must stay distinct.",
+        "This does not recalculate, mutate the result, or change exported axis_value.",
+    ),
     "sweep.display_tth_min": _h("Display 2theta minimum.", "View control.", "e.g. 5 deg.", "Must be less than max."),
     "sweep.display_tth_max": _h("Display 2theta maximum.", "View control.", "e.g. 20 deg.", "Must exceed min."),
     "sweep.display_axis_min": _h("Display minimum on the sweep axis.", "Crop the scan axis.", "Focus the region of interest.", "Must be less than max."),
@@ -817,7 +990,7 @@ EN_HELP: dict[str, str] = {
         "Prepare after the active model looks right.",
         "Config changes invalidate the previous package.",
     ),
-    "export.download": _h("Download current_simulation.zip.", "Archival and plotting.", "Includes Origin helpers.", "Schema 2.1."),
+    "export.download": _h("Download current_simulation.zip.", "Archival and plotting.", "Includes Origin helpers.", "Schema 2.2."),
     "fit.obs.upload": _h(
         "Upload a discrete peak observation CSV.",
         "Brings lab peak strengths into the inverse fit.",
@@ -841,6 +1014,12 @@ EN_HELP: dict[str, str] = {
         "Defines what I_obs represents scientifically.",
         "Prefer peak_area when integrals are available.",
         "Peak-height is equal-width only in v1.",
+    ),
+    "fit.display_coordinate": _h(
+        "Change only the structure coordinate shown on the χ² and S curves.",
+        "The fit remains canonical in Wyckoff y; display can use y, signed shuffle, or magnitude.",
+        "Prefer signed shuffle when comparing candidate minima on both sides of y=0.25.",
+        "This does not rerun the fit or change y*; magnitude mode separates the two branches.",
     ),
     "fit.weight_mode": _h(
         "Global weight scheme when rows omit weight/sigma.",

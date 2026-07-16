@@ -10,6 +10,7 @@ from orthoxrd.fit_models import FitError, FitIssue, PeakObservation
 # Miller indices use the non-negative powder convention (0..hkl_max); see module notes.
 # For multi-line radiation (e.g. Cu K-alpha doublet), fill line or line_id
 # (line_00, line_01, ...) on every row — empty line hard-fails with multi-line ambiguity.
+OBSERVATION_CSV_EDITOR_TEMPLATE = "h,k,l,I_obs,line,weight,sigma,notes\n"
 OBSERVATION_CSV_TEMPLATE = """h,k,l,I_obs,line,weight,sigma,notes
 2,0,0,100.0,,,,
 1,1,1,250.0,,,,
@@ -42,6 +43,11 @@ def observation_csv_template() -> str:
     - At most one row per (HKL, radiation line); duplicates hard-fail.
     """
     return OBSERVATION_CSV_TEMPLATE
+
+
+def observation_csv_editor_template() -> str:
+    """Return a header-only table for entering real measured observations."""
+    return OBSERVATION_CSV_EDITOR_TEMPLATE
 
 
 def parse_observation_csv(text: str) -> tuple[PeakObservation, ...]:

@@ -9,6 +9,7 @@ from orthoxrd.export_schema import CURRENT_PEAK_FIELDS, CsvValue
 from orthoxrd.i18n import t, th
 from orthoxrd.simulation import SimulationResult
 from orthoxrd.ui_plot_pattern import plot_pattern
+from orthoxrd.ui_structure_context import structure_context_caption
 from orthoxrd.ui_tables import rows_to_csv
 
 
@@ -19,6 +20,9 @@ def render_peaks_view(result: SimulationResult) -> None:
     st.caption(
         t("peaks.caption", shown=len(filtered), total=len(all_rows))
     )
+    st.caption(structure_context_caption(result.config.y))
+    if not filtered:
+        st.info(t("peaks.empty_filtered"))
     event = st.dataframe(
         filtered,
         width="stretch",
@@ -135,6 +139,7 @@ def _downloads(
             use_container_width=True,
             help=th("peaks.download_filtered"),
         )
+    st.caption(t("export.csv_excel_hint.current"))
 
 
 def _selected_index(event: Any) -> int | None:

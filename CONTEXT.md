@@ -17,6 +17,18 @@ _Avoid_: displacement (unqualified), shuffle without signed/magnitude
 **Shuffle branch**:
 Which of the two y values maps from a given shuffle magnitude: lower `y = 0.25 - s/2` or upper `y = 0.25 + s/2`.
 
+**Zero-shuffle reference**:
+The `y=0.25` special-position state in the same `Cmcm` unit cell. It is used to
+show the 4c atom paths `±b(y-0.25)` along `b`; it is not assigned to another
+parent phase without independent evidence.
+_Avoid_: parent phase, phase transformation endpoint
+
+**Structure display coordinate**:
+A read-only plot projection of canonical `y` as `y`, signed shuffle, or
+branch-safe shuffle magnitude. It never changes the calculated result or the
+exported canonical axis.
+_Avoid_: fit parameter transformation, recalculated sweep
+
 ### Forward intensity
 
 **Model peak intensity**:
@@ -26,6 +38,15 @@ _Avoid_: measured intensity, absolute intensity, calibrated intensity, Rietveld 
 **Relative intensity**:
 Model intensity renormalised for display or comparison (`I_rel_local` per spectrum/step, `I_rel_global` across a sweep).
 _Avoid_: experimental relative intensity (unless explicitly observed)
+
+**Reference R factor**:
+Unnormalised theoretical peak reference in either with-LP form
+`R_hkl = N × F² × LP / V²` or no-LP form `R_hkl_no_LP = N × F² / V²`.
+It always uses crystallographic multiplicity and the raw LP factor, independent
+of model correction toggles and radiation-line weight. The no-LP form applies
+only when experimental integrated areas have received the corresponding LP,
+polarisation, or geometry correction.
+_Avoid_: absolute intensity, calibrated intensity, Rietveld residual
 
 ### Inverse fit (discrete peaks)
 
@@ -64,3 +85,9 @@ _Avoid_: solution (unqualified) when only a candidate is meant
 **Fit export package**:
 ZIP of process tables (observations, grid scan, refine trace, best point, residuals at best, config, manifest) for external visualisation.
 _Avoid_: black-box result, fit summary only
+
+**Analysis workbook**:
+The additive `analysis.xlsx` human-inspection mirror inside an export ZIP. Its
+README, Parameters, and Columns sheets explain the data, and text identifiers
+preserve leading zeroes. CSV remains the canonical machine-readable contract.
+_Avoid_: replacement export, canonical Excel schema

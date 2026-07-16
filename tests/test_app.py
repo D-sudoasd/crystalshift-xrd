@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 from streamlit.testing.v1 import AppTest
 
+from orthoxrd.fit_observations import OBSERVATION_CSV_TEMPLATE
 from orthoxrd.i18n import DEFAULT_LANG
 from orthoxrd.locales.en import EN_HELP, EN_TEXT
 from orthoxrd.locales.zh import ZH_HELP, ZH_TEXT
@@ -77,6 +78,30 @@ def test_core_inputs_and_advanced_controls_are_in_main_page() -> None:
     assert not sidebar_labels
 
 
+def test_first_screen_requires_input_review_and_shows_active_model_details() -> None:
+    app = _app()
+    app.run(timeout=30)
+
+    rendered_text = _all_text(app)
+    assert "分析或导出前必须核对" in rendered_text
+    assert "成分散射因子" in rendered_text
+    assert "Ti:0.64, Nb:0.24, Zr:0.04, Sn:0.08" in rendered_text
+    assert "2θ 1–20°" in rendered_text
+    assert "Pseudo-Voigt · FWHM 0.0600°" in rendered_text
+    assert "LP 开 · 多重度 开 · 体积 1/V 开" in rendered_text
+
+
+def test_advanced_settings_explain_impact_and_localize_profile_options() -> None:
+    app = _app()
+    app.run(timeout=30)
+
+    assert "这些设置会改变峰是否出现、峰形和理论强度" in _all_text(app)
+    profile = next(
+        item for item in app.main.selectbox if item.label == ZH_TEXT["advanced.profile"]
+    )
+    assert set(profile.options) == {"Pseudo-Voigt", "高斯", "洛伦兹"}
+
+
 def _navigation(app: AppTest):
     return next(
         item
@@ -94,6 +119,19 @@ def test_navigation_uses_segmented_control_and_renders_only_active_view() -> Non
     assert navigation.value in {"pattern", ZH_TEXT["nav.pattern"]}
     assert not app.main.tabs
     assert ZH_TEXT["sweep.run"] not in {button.label for button in app.main.button}
+
+
+def test_peaks_view_explains_when_filters_match_no_rows() -> None:
+    app = _app()
+    app.run(timeout=30)
+    _select_view(app, "peaks")
+
+    hkl_filter = next(
+        item for item in app.main.text_input if item.label == ZH_TEXT["peaks.hkl_filter"]
+    )
+    hkl_filter.set_value("999").run(timeout=30)
+
+    assert "当前筛选没有匹配的峰" in _all_text(app)
 
 
 def test_pattern_exposes_static_live_mode_and_display_range() -> None:
@@ -150,6 +188,51 @@ def test_structure_range_note_is_visible() -> None:
     rendered_text = _all_text(app)
     for expected in RANGE_TEXTS:
         assert expected in rendered_text
+
+
+def test_structure_readout_shows_the_current_shuffle_branch() -> None:
+    app = _app()
+    app.run(timeout=30)
+    assert "当前下分支" in _all_text(app)
+
+    y_input = next(
+        item
+        for item in app.main.number_input
+        if item.label == ZH_TEXT["structure.y"].format(ymin=0.0, ymax=0.5)
+    )
+    y_input.set_value(0.3).run(timeout=30)
+
+    assert "当前上分支" in _all_text(app)
+
+    y_input = next(
+        item
+        for item in app.main.number_input
+        if item.label == ZH_TEXT["structure.y"].format(ymin=0.0, ymax=0.5)
+    )
+    y_input.set_value(0.25).run(timeout=30)
+
+    assert "当前零-shuffle 参考点" in _all_text(app)
+    branch = next(
+        item
+        for item in app.main.segmented_control
+        if item.label == ZH_TEXT["structure.branch"]
+    )
+    assert branch.value == "upper"
+
+    shuffle = next(
+        item
+        for item in app.main.number_input
+        if item.label
+        == ZH_TEXT["structure.shuffle"].format(smin=0.0, smax=0.5)
+    )
+    shuffle.set_value(0.1).run(timeout=30)
+    y_input = next(
+        item
+        for item in app.main.number_input
+        if item.label == ZH_TEXT["structure.y"].format(ymin=0.0, ymax=0.5)
+    )
+    assert abs(float(y_input.value) - 0.3) < 1e-12
+    assert "当前上分支" in _all_text(app)
 
 
 def _select_view(app: AppTest, view: str) -> None:
@@ -230,6 +313,19 @@ def test_f2_view_does_not_run_batch_engine() -> None:
     assert not app.exception
 
 
+def test_method_view_explains_first_use_order_and_every_result_view() -> None:
+    app = _app()
+    app.run(timeout=30)
+    _select_view(app, "method")
+
+    rendered_text = _all_text(app)
+    assert "首次使用顺序" in rendered_text
+    assert "分析或导出前先核对" in rendered_text
+    assert "各分区用途" in rendered_text
+    for view_name in ("衍射谱", "布拉格峰", "F² 演化", "参数扫描", "峰强拟合", "方法与解读"):
+        assert view_name in rendered_text
+
+
 def test_fit_view_is_lazy_and_does_not_run_sweep() -> None:
     app = _app()
     with patch(
@@ -248,7 +344,55 @@ def test_fit_view_is_lazy_and_does_not_run_sweep() -> None:
     assert ZH_TEXT["fit.obs.template"] in {
         item.label for item in app.get("download_button")
     } or ZH_TEXT["fit.obs.template"] in button_labels
-    assert ZH_TEXT["fit.obs.editor"] in {item.label for item in app.main.text_area}
+    editor = next(
+        item for item in app.main.text_area if item.label == ZH_TEXT["fit.obs.editor"]
+    )
+    assert str(editor.value) == OBSERVATION_CSV_TEMPLATE.splitlines(keepends=True)[0]
+    run = next(button for button in app.main.button if button.label == ZH_TEXT["fit.run"])
+    assert run.disabled
+
+
+def test_fit_requires_two_valid_observations_before_run() -> None:
+    app = _app()
+    app.run(timeout=30)
+    _select_view(app, "fit")
+    editor = next(
+        item for item in app.main.text_area if item.label == ZH_TEXT["fit.obs.editor"]
+    )
+
+    editor.set_value("h,k,l,I_obs,line,weight,sigma,notes\n0,2,1,10.0,,,,\n").run(
+        timeout=30
+    )
+    run = next(button for button in app.main.button if button.label == ZH_TEXT["fit.run"])
+    assert run.disabled
+
+    editor = next(
+        item for item in app.main.text_area if item.label == ZH_TEXT["fit.obs.editor"]
+    )
+    editor.set_value(
+        "h,k,l,I_obs,line,weight,sigma,notes\n"
+        "0,2,1,10.0,,,,\n1,1,0,8.0,,,,\n"
+    ).run(timeout=30)
+    run = next(button for button in app.main.button if button.label == ZH_TEXT["fit.run"])
+    assert not run.disabled
+
+
+def test_fit_rejects_two_observations_unmatched_by_the_active_model_before_run() -> None:
+    app = _app()
+    app.run(timeout=30)
+    _select_view(app, "fit")
+    editor = next(
+        item for item in app.main.text_area if item.label == ZH_TEXT["fit.obs.editor"]
+    )
+
+    editor.set_value(
+        "h,k,l,I_obs,line,weight,sigma,notes\n"
+        "99,99,99,10.0,,,,\n98,98,98,8.0,,,,\n"
+    ).run(timeout=30)
+
+    run = next(button for button in app.main.button if button.label == ZH_TEXT["fit.run"])
+    assert run.disabled
+    assert "unmatched HKL" in _all_text(app)
 
 
 def _structure_y_input(app: AppTest):
@@ -264,6 +408,10 @@ def _structure_a_input(app: AppTest):
 
 
 def _run_fit(app: AppTest) -> None:
+    editor = next(
+        item for item in app.main.text_area if item.label == ZH_TEXT["fit.obs.editor"]
+    )
+    editor.set_value(OBSERVATION_CSV_TEMPLATE).run(timeout=30)
     run_button = next(
         button for button in app.main.button if button.label == ZH_TEXT["fit.run"]
     )
@@ -281,6 +429,30 @@ def test_fit_run_does_not_mutate_structure_y() -> None:
     assert float(_structure_y_input(app).value) == y_before
 
 
+def test_fit_renders_four_diagnostics_and_coordinate_toggle() -> None:
+    app = _app()
+    app.run(timeout=30)
+    _select_view(app, "fit")
+    assert ZH_TEXT.get("fit.context.header", "fit.context.header") in _all_text(app)
+
+    _run_fit(app)
+    assert len(app.main.get("plotly_chart")) == 4
+    display_axis = next(
+        item
+        for item in app.main.segmented_control
+        if list(item.options)
+        == [
+            ZH_TEXT["axis.y"],
+            ZH_TEXT["axis.signed_shuffle"],
+            ZH_TEXT["axis.shuffle_magnitude"],
+        ]
+    )
+    display_axis.select("shuffle_magnitude").run(timeout=30)
+
+    assert not app.exception
+    assert len(app.main.get("plotly_chart")) == 4
+
+
 def test_fit_apply_writes_y_star_only_on_click() -> None:
     app = _app()
     app.run(timeout=30)
@@ -296,6 +468,15 @@ def test_fit_apply_writes_y_star_only_on_click() -> None:
     assert not app.exception
     y_after = float(_structure_y_input(app).value)
     assert y_after != y_before
+    structure_branch = next(
+        item
+        for item in app.main.segmented_control
+        if item.label == ZH_TEXT["structure.branch"]
+    )
+    if y_after < 0.25:
+        assert structure_branch.value == "lower"
+    elif y_after > 0.25:
+        assert structure_branch.value == "upper"
     # Apply commits y* without marking the fit stale (y is not a fit input).
     page = _all_text(app)
     assert "拟合结果与当前配置及观测表一致" in page
@@ -460,6 +641,20 @@ def test_sweep_result_becomes_stale_after_structure_change() -> None:
         button for button in app.main.button if button.label == ZH_TEXT["sweep.prepare"]
     )
     assert prepare.disabled
+
+
+def test_csv_and_excel_guidance_is_visible_on_data_views() -> None:
+    app = _app()
+    app.run(timeout=30)
+    assert ZH_TEXT["export.csv_excel_hint.current"] in _all_text(app)
+
+    _select_view(app, "peaks")
+    assert ZH_TEXT["export.csv_excel_hint.current"] in _all_text(app)
+
+    _select_view(app, "f2")
+    labels = {item.label for item in app.get("download_button")}
+    assert {ZH_TEXT["f2.download"], ZH_TEXT["f2.download_excel"]} <= labels
+    assert ZH_TEXT["export.csv_excel_hint.f2"] in _all_text(app)
 
 
 def _all_text(app: AppTest) -> str:

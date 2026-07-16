@@ -3,6 +3,18 @@ from __future__ import annotations
 from typing import Final
 
 CsvValue = str | int | float
+EXPORT_SCHEMA_VERSION: Final[str] = "2.2"
+
+F2_EVOLUTION_FIELDS: Final[tuple[str, ...]] = (
+    "axis_value",
+    "hkl",
+    "F2",
+    "axis_code",
+    "y",
+    "shuffle_signed",
+    "shuffle_magnitude",
+    "branch",
+)
 
 PEAK_EVOLUTION_FIELDS: Final[tuple[str, ...]] = (
     "sweep_index",
@@ -73,6 +85,29 @@ CURRENT_PEAK_FIELDS: Final[tuple[str, ...]] = (
     "applied_volume_factor",
     "I_model_peak",
     "I_rel_local",
+    "y",
+    "shuffle_signed",
+    "shuffle_magnitude",
+    "a_A",
+    "b_A",
+    "c_A",
+    "energy_keV",
+    "theta_deg",
+    "g_A_inv",
+    "sin_theta",
+    "cos_theta",
+    "sin_theta_over_lambda_1_over_A",
+    "sin2_theta_over_lambda2_1_over_A2",
+    "F_abs",
+    "cell_volume_A3",
+    "multiplicity_structure_factor_sq",
+    "theoretical_intensity_unscaled",
+    "material_scattering_factor_R_hkl",
+    "material_scattering_factor_R_hkl_no_lp",
+    "inverse_material_scattering_factor_1_over_R_hkl",
+    "inverse_material_scattering_factor_1_over_R_hkl_no_lp",
+    "phase_relative_R_hkl_pct",
+    "phase_relative_R_hkl_no_lp_pct",
 )
 PEAK_EVOLUTION_V2_FIELDS: Final[tuple[str, ...]] = (
     *PEAK_EVOLUTION_FIELDS,
@@ -92,6 +127,20 @@ PEAK_EVOLUTION_V2_FIELDS: Final[tuple[str, ...]] = (
     "applied_LP",
     "applied_volume_factor",
     "I_model_peak",
+    "theta_deg",
+    "g_A_inv",
+    "sin_theta",
+    "cos_theta",
+    "sin_theta_over_lambda_1_over_A",
+    "sin2_theta_over_lambda2_1_over_A2",
+    "F_abs",
+    "cell_volume_A3",
+    "multiplicity_structure_factor_sq",
+    "theoretical_intensity_unscaled",
+    "material_scattering_factor_R_hkl",
+    "material_scattering_factor_R_hkl_no_lp",
+    "inverse_material_scattering_factor_1_over_R_hkl",
+    "inverse_material_scattering_factor_1_over_R_hkl_no_lp",
 )
 SPECTRA_LONG_V2_FIELDS: Final[tuple[str, ...]] = (
     *SPECTRA_LONG_FIELDS,
