@@ -66,11 +66,14 @@ def test_current_simulation_zip_has_analysis_ready_contract() -> None:
         assert set(archive.namelist()) == set(CURRENT_EXPORT_FILES)
         manifest = json.loads(archive.read("manifest.json"))
         workbook = archive.read("analysis.xlsx")
-        assert manifest["schema_version"] == "2.2"
+        assert manifest["schema_version"] == "2.3"
+        assert manifest["generated_at_utc"] is None
+        assert manifest["deterministic"] is True
         assert {
             "plot_state.json", "origin_column_map.csv", "origin_import.py", "ORIGIN_README.md"
         } <= set(archive.namelist())
-        assert manifest["intensity"]["I_model_peak"].startswith("F2")
+        assert manifest["intensity"]["I_model_peak"].startswith("F²")
+        assert all(info.date_time == (1980, 1, 1, 0, 0, 0) for info in archive.infolist())
         spectrum = list(csv.DictReader(io.StringIO(archive.read("spectrum.csv").decode("utf-8"))))
         peaks = list(csv.DictReader(io.StringIO(archive.read("peaks.csv").decode("utf-8"))))
 
@@ -180,6 +183,11 @@ def test_current_r_factor_percentages_are_normalized_per_radiation_line() -> Non
         ) == pytest.approx(100.0)
 
 
+def test_current_zip_is_byte_deterministic_for_same_result() -> None:
+    result = calculate_simulation(_config())
+    assert build_current_zip(result) == build_current_zip(result)
+
+
 def test_batch_zip_preserves_legacy_headers_and_adds_v2_files() -> None:
     package = build_sweep_zip(_sweep())
 
@@ -196,7 +204,9 @@ def test_batch_zip_preserves_legacy_headers_and_adds_v2_files() -> None:
 
     assert peak_header[: len(PEAK_EVOLUTION_FIELDS)] == list(PEAK_EVOLUTION_FIELDS)
     assert spectra_header[: len(SPECTRA_LONG_FIELDS)] == list(SPECTRA_LONG_FIELDS)
-    assert manifest["schema_version"] == "2.2"
+    assert manifest["schema_version"] == "2.3"
+    assert manifest["generated_at_utc"] is None
+    assert manifest["deterministic"] is True
     assert manifest["compatibility"]["legacy_headers_preserved"] is True
     assert "analysis.xlsx" in manifest["files"]
     assert hashlib.sha256(workbook).hexdigest() == manifest["files"]["analysis.xlsx"][
@@ -215,6 +225,11 @@ def test_batch_zip_preserves_legacy_headers_and_adds_v2_files() -> None:
     assert b"Global-relative profile intensity for stable sweep step step_0000." in columns_xml
     assert b"Reference factor N*F2*LP/V_cell^2 for stable series" in columns_xml
     assert b"model structure-factor units * angstrom^-6" in columns_xml
+
+
+def test_sweep_zip_is_byte_deterministic_for_same_result() -> None:
+    result = _sweep()
+    assert build_sweep_zip(result) == build_sweep_zip(result)
 
 
 def test_peak_matrix_step_id_has_identifier_metadata_in_excel() -> None:

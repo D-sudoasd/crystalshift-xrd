@@ -151,6 +151,7 @@ def test_prepare_fit_export_members_and_key_columns() -> None:
         best_fit = json.loads(archive.read("best_fit.json"))
         config_payload = json.loads(archive.read("config.json"))
         manifest = json.loads(archive.read("manifest.json"))
+        diagnostics_payload = json.loads(archive.read("fit_diagnostics.json"))
         workbook = archive.read("analysis.xlsx")
         readme = archive.read("README.md").decode("utf-8")
 
@@ -202,6 +203,11 @@ def test_prepare_fit_export_members_and_key_columns() -> None:
         "y",
         "scale_s",
         "chi2",
+        "refined_y",
+        "refined_scale_s",
+        "refined_chi2",
+        "delta_chi2",
+        "refine_status",
         "shuffle_signed",
         "shuffle_magnitude",
         "branch",
@@ -256,6 +262,8 @@ def test_prepare_fit_export_members_and_key_columns() -> None:
     assert residuals
     assert {"I_obs", "I_model", "S_I_model", "residual", "weight"} <= set(residuals[0])
     assert minima  # synthetic unimodal surface still has at least one candidate
+    assert all(row["refine_status"] == "refined" for row in minima)
+    assert {"refined_y", "refined_scale_s", "refined_chi2", "delta_chi2"} <= set(minima[0])
 
     assert "y" in best_fit and "scale_s" in best_fit and "chi2" in best_fit
     assert config_payload["fit"]["observable_mode"] == "peak_area"
@@ -269,12 +277,16 @@ def test_prepare_fit_export_members_and_key_columns() -> None:
     assert "notes" in config_payload
     assert "simulation_wyckoff_y" in config_payload["notes"]
     assert "best.y" in config_payload["notes"]["simulation_wyckoff_y"]
+    assert config_payload["fit"]["profile_delta_chi2"] == 1.0
+    assert config_payload["fit"]["identifiability"]["heuristic"] is True
     assert config_payload["fit"]["free_parameters"] == ["y", "scale_s"]
     assert "resolved_weight" in config_payload["notes"]["observations_weight_columns"]
     assert "resolved_weight" in readme.lower() or "resolved weight" in readme.lower()
 
     assert manifest["export_kind"] == "fit"
-    assert manifest["schema_version"] == "2.2"
+    assert manifest["schema_version"] == "2.3"
+    assert manifest["generated_at_utc"] is None
+    assert manifest["deterministic"] is True
     assert manifest["config_hash"] == fit_export_hash(result)
     assert "not" in readme.lower() and "rietveld" in readme.lower()
     # Fit manifests drop sweep-centric legacy fields and note non-Rietveld limits.
@@ -285,6 +297,9 @@ def test_prepare_fit_export_members_and_key_columns() -> None:
     assert "objective" in manifest["intensity"]
     assert "I_rel_local" not in manifest["intensity"]
     assert "analysis.xlsx" in manifest["files"]
+    assert diagnostics_payload["method"] == "profile_delta_chi2"
+    assert diagnostics_payload["heuristic"] is True
+    assert diagnostics_payload["status"] == "multi_modal"
     assert xlsx_sheet_names(workbook) == [
         "README",
         "Parameters",
@@ -336,6 +351,11 @@ def test_prepare_fit_export_members_and_key_columns() -> None:
     # No full residual cube for every grid y.
     residual_names = [name for name in names if "residual" in name]
     assert residual_names == ["residual_at_best.csv"]
+
+
+def test_fit_zip_is_byte_deterministic_for_same_result() -> None:
+    result = _fit_result()
+    assert build_fit_zip(result) == build_fit_zip(result)
 
 
 def test_fit_manifest_checksums_match_members() -> None:

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import UTC, datetime
 
 from orthoxrd import __version__
 from orthoxrd.batch_models import SweepResult
@@ -14,6 +13,14 @@ from orthoxrd.export_schema import (
     SPECTRA_LONG_FIELDS,
 )
 from orthoxrd.export_writer import ExportFileMeta
+
+_MODEL_PEAK_FORMULA = (
+    "F² × applied_multiplicity × applied_LP × "
+    "applied_volume_factor × line_weight"
+)
+_APPLIED_VOLUME_FACTOR_NOTE = (
+    "1 / V_cell when the cell-volume correction is enabled; otherwise 1"
+)
 
 
 def manifest_json(
@@ -43,7 +50,8 @@ def manifest_json(
         "schema_version": EXPORT_SCHEMA_VERSION,
         "app_version": __version__,
         "export_kind": export_kind,
-        "generated_at_utc": datetime.now(UTC).isoformat(),
+        "generated_at_utc": None,
+        "deterministic": True,
         "config_hash": digest,
         "model": "orthorhombic alpha-double-prime Cmcm 4c",
         "corrections": config_payload(config)["corrections"],
@@ -54,10 +62,8 @@ def manifest_json(
         payload = {
             **common,
             "intensity": {
-                "I_model_peak": (
-                    "F2 * applied_multiplicity * applied_LP * "
-                    "applied_volume_factor * radiation_line_weight"
-                ),
+                "I_model_peak": _MODEL_PEAK_FORMULA,
+                "applied_volume_factor": _APPLIED_VOLUME_FACTOR_NOTE,
                 "objective": "chi2(y, S) = sum_i w_i (I_obs,i - S * I_model,i(y))^2",
                 "scale_S": (
                     "closed-form non-negative least-squares "
@@ -88,10 +94,8 @@ def manifest_json(
         payload = {
             **common,
             "intensity": {
-                "I_model_peak": (
-                    "F2 * applied_multiplicity * applied_LP * "
-                    "applied_volume_factor * radiation_line_weight"
-                ),
+                "I_model_peak": _MODEL_PEAK_FORMULA,
+                "applied_volume_factor": _APPLIED_VOLUME_FACTOR_NOTE,
                 "I_profile_model": "sum(I_model_peak * profile(two_theta-center))",
                 "I_rel_local": "100 * value / maximum within one step",
                 "I_rel_global": "100 * value / maximum across the sweep",
@@ -244,9 +248,10 @@ profile refinement. Lattice a, b, c, radiation, and intensity corrections are
 fixed from the active simulation configuration; only y and S are free.
 
 Method
-- Model peak intensity: I_model_peak = F2 * applied_multiplicity * applied_LP *
-  applied_volume * radiation_line_weight (same forward contract as the rest of
+- Model peak intensity: I_model_peak = F² × applied_multiplicity × applied_LP ×
+  applied_volume_factor × line_weight (same forward contract as the rest of
   CrystalShift XRD).
+- When the cell-volume correction is enabled, applied_volume_factor = 1 / V_cell.
 - Objective: chi2(y, S) = sum_i w_i (I_obs,i - S * I_model,i(y))^2.
 - Closed-form scale: S(y) = sum w I_obs I_model / sum w I_model^2 (S clamped >= 0).
 - Default weights (poisson): w_i = 1 / max(I_obs,i, epsilon). Equal weights are

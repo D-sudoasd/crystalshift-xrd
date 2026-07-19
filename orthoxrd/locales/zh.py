@@ -21,7 +21,7 @@ ZH_TEXT: dict[str, str] = {
     "common.off": "关",
     # App shell
     "app.page_title": "CrystalShift XRD",
-    "app.model_tag": "Cmcm 4c | schema 2.2",
+    "app.model_tag": "Cmcm 4c | schema 2.3",
     "app.subtitle": "面向晶格、Wyckoff-y、基面 shuffle 与入射辐射的运动学粉末 XRD 理论模型。",
     "app.spinner": "正在计算当前理论模型…",
     "app.summary.a": "a (Å)",
@@ -274,7 +274,7 @@ ZH_TEXT: dict[str, str] = {
         "仅在松开滑块时将最终帧写回 Python 主参数。"
     ),
     "live.export.prepare": "准备实时演化 ZIP",
-    "live.export.spinner": "正在构建 schema 2.2 实时分析包…",
+    "live.export.spinner": "正在构建 schema 2.3 实时分析包…",
     "live.export.caption_prepare": "按需生成全精度实时 ZIP。",
     "live.export.caption_changed": "实时选择已变更，请重新准备 ZIP。",
     "live.export.download": "下载 live_evolution.zip",
@@ -321,8 +321,8 @@ ZH_TEXT: dict[str, str] = {
     "sweep.peak_sample_header": "##### 峰演化样例",
     "sweep.preview_caption": "预览最多 500 行峰数据。ZIP 含完整表格。",
     "sweep.prepare": "准备扫描 ZIP",
-    "sweep.spinner": "正在将 schema 2.2 文件写入 ZIP…",
-    "sweep.prepare_caption": "先运行当前配置，再准备 schema 2.2 ZIP。",
+    "sweep.spinner": "正在将 schema 2.3 文件写入 ZIP…",
+    "sweep.prepare_caption": "先运行当前配置，再准备 schema 2.3 ZIP。",
     "sweep.download": "下载扫描 ZIP",
     "sweep.export_size": "{kib:.1f} KiB | SHA-256 {sha}…",
     "sweep.calc_spinner": "正在计算参数扫描…",
@@ -378,7 +378,7 @@ ZH_TEXT: dict[str, str] = {
     # Export current
     "export.prepare": "准备当前结果 ZIP",
     "export.spinner": "正在准备当前模拟导出…",
-    "export.caption": "Schema 2.2 导出按需生成。",
+    "export.caption": "Schema 2.3 导出按需生成。",
     "export.expired": "已准备的导出已失效，请重新准备。",
     "export.download": "下载当前 ZIP",
     "export.size": "{kib:.1f} KiB | SHA-256 {sha}…",
@@ -488,8 +488,41 @@ ZH_TEXT: dict[str, str] = {
     "fit.diagnostics.scale": "每个结构坐标处闭式求得的最优标度因子 S(y)。",
     "fit.diagnostics.parity": "观测峰强与最优拟合峰强；越接近对角线，一致性越好。",
     "fit.diagnostics.contributions": "每个 HKL 的 w·residual²；柱高之和等于最优 χ²。",
+    "fit.identifiability.header": "##### y 可辨识性（profile Δχ² heuristic）",
+    "fit.identifiability.status_label": "状态",
+    "fit.identifiability.interval_label": "heuristic y 区间",
+    "fit.identifiability.no_interval": "不可用",
+    "fit.identifiability.no_reason": "未记录原因",
+    "fit.identifiability.note": (
+        "阈值 Δχ²={threshold:.6g}；原因：{reasons}。该 profile 由网格点与细化候选构成，"
+        "不是完整协方差估计。"
+    ),
+    "fit.identifiability.status.identified": "已辨识",
+    "fit.identifiability.status.boundary_limited": "边界受限",
+    "fit.identifiability.status.multi_modal": "多模态",
+    "fit.identifiability.status.flat": "平坦",
+    "fit.identifiability.status.not_available": "不可用",
+    "fit.identifiability.warning.multi_modal": (
+        "多个局部候选落入 profile 阈值内；当前最佳候选不自动等于唯一物理解。"
+    ),
+    "fit.identifiability.warning.boundary_limited": (
+        "profile 区间触及 y 扫描边界；在把区间视为内部有界前，应先扩大扫描范围。"
+    ),
+    "fit.identifiability.warning.flat": (
+        "整个扫描范围内 profile 都在阈值内；仅凭当前观测峰，y 的辨识能力较弱。"
+    ),
+    "fit.identifiability.identified": (
+        "profile 在扫描内部有界，且未发现额外近似同样优的候选；这仍是 heuristic 诊断。"
+    ),
+    "fit.identifiability.unavailable": "当前无法得到 y 可辨识性 profile 诊断。",
     "fit.local_minima.header": "##### 局部极小候选",
     "fit.local_minima.empty": "网格 χ² 曲线上未找到邻域极小。",
+    "fit.local_minima.select": "要应用的候选",
+    "fit.local_minima.select_help": "选择一个已报告的局部候选；细化成功时将应用 refined y。",
+    "fit.apply_candidate": "应用选中候选",
+    "fit.apply_candidate_help": (
+        "只把选中候选应用到结构面板；不会改变拟合自动选出的最佳点。"
+    ),
     "fit.residuals.header": "##### 最优点残差",
     "fit.apply": "将 y* 应用到结构",
     "fit.apply_caption": (
@@ -497,6 +530,7 @@ ZH_TEXT: dict[str, str] = {
         "应用 y* 会更新 Wyckoff y 与 shuffle 幅度。"
     ),
     "fit.apply_success": "已将 y* = {y:.6f} 写入结构参数。",
+    "fit.apply_candidate_success": "已将选中候选 y = {y:.6f} 写入结构参数。",
     "fit.prepare": "准备拟合 ZIP",
     "fit.spinner": "正在将拟合过程表写入 ZIP…",
     "fit.prepare_caption": "先用当前配置运行拟合，再准备过程表 ZIP。",
@@ -540,9 +574,9 @@ ZH_TEXT: dict[str, str] = {
 
 #### 峰强度
 
-**I_model_peak = F² × 多重度 × LP × 体积因子 × 辐射线权重**
+**I_model_peak = F² × applied_multiplicity × applied_LP × applied_volume_factor × line_weight**
 
-各 applied 因子在导出中单独给出。applied_volume 为 1/V 或 1，以保持所选模型约定。
+各 applied 因子在导出中单独给出；启用晶胞体积修正时 applied_volume_factor = 1 / V_cell，否则为 1。
 
 另提供不受修正开关和辐射线权重影响的理论参考因子：
 
@@ -742,7 +776,7 @@ ZH_HELP: dict[str, str] = {
         "是否按 1/V 对强度缩放。",
         "反映单胞体积对运动学强度的贡献。",
         "比较不同晶格体积时建议开启。",
-        "导出中会写明 applied_volume 实际取值。",
+        "导出中会写明 applied_volume_factor 实际取值。",
     ),
     "pattern.mode": _h(
         "静态单谱与单参数实时演化之间切换。",
@@ -882,7 +916,7 @@ ZH_HELP: dict[str, str] = {
         "确认基线与当前帧后准备 ZIP。",
         "选择变更后需重新准备。",
     ),
-    "live.export.download": _h("下载已准备的 live_evolution.zip。", "离线分析。", "含 live_state.json 等。", "schema 2.2。"),
+    "live.export.download": _h("下载已准备的 live_evolution.zip。", "离线分析。", "含 live_state.json 等。", "schema 2.3。"),
     "sweep.spectrum_points": _h(
         "扫描中每一步谱图采样点数。",
         "控制内存与 ZIP 体积。",
@@ -922,7 +956,7 @@ ZH_HELP: dict[str, str] = {
     "sweep.result_view": _h("在热图、瀑布图、峰演化与数据预览间切换。", "同一结果多视角解读。", "先热图总览再峰演化。", "显示范围裁剪不影响导出全量。"),
     "sweep.peak_metric": _h("峰演化曲线的纵轴度量。", "F²、N·F²、R 与模型强度口径不同。", "实验峰面积后处理可按是否已校正 LP 选择两种 R。", "R 是未归一化理论参考因子，不是仪器绝对标定强度。"),
     "sweep.peak_series": _h("最多选择 12 条峰系列绘制演化。", "跟踪关键 HKL。", "勾选 110/020 等。", "消光峰以 0 保留以不断线。"),
-    "sweep.prepare": _h("生成 schema 2.2 扫描 ZIP。", "完整可复现数据包。", "结果有效且未过期时准备。", "过期结果按钮禁用。"),
+    "sweep.prepare": _h("生成 schema 2.3 扫描 ZIP。", "完整可复现数据包。", "结果有效且未过期时准备。", "过期结果按钮禁用。"),
     "sweep.download": _h("下载已准备的扫描 ZIP。", "Origin/Python 后处理。", "含矩阵与 checksum。", "文件名保持英文。"),
     "sweep.display_range": _h("仅裁剪热图/瀑布图显示窗。", "导出仍为全模拟窗口。", "放大局部 2θ。", "上下限须有序。"),
     "sweep.display_coordinate": _h(
@@ -942,7 +976,7 @@ ZH_HELP: dict[str, str] = {
         "调参满意后点击准备。",
         "配置变更会使旧包失效。",
     ),
-    "export.download": _h("下载 current_simulation.zip。", "存档与制图。", "含 Origin 辅助文件。", "schema 2.2。"),
+    "export.download": _h("下载 current_simulation.zip。", "存档与制图。", "含 Origin 辅助文件。", "schema 2.3。"),
     "fit.obs.upload": _h(
         "上传离散峰观测 CSV。",
         "把实验峰强导入反演拟合。",

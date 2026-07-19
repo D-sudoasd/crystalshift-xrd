@@ -10,7 +10,8 @@ This is a dense scientific analysis workbench, not a landing page. Its first vie
 - `a`, `b`, `c`, wavelength, and energy control Bragg positions.
 - Wyckoff `y` and basal shuffle control structure factors and model intensities, not d-spacing.
 - `y` is canonical; signed shuffle is one-to-one, while magnitude is two-to-one and must retain a lower/upper branch. `y=0.25` is the zero-shuffle reference in the same Cmcm cell, and the 4c displacement is `±b(y-0.25)` along `b`.
-- Peak model intensity is `F2 x applied_multiplicity x applied_LP x applied_volume x line_weight`.
+- Peak model intensity is `I_model_peak = F² × applied_multiplicity × applied_LP × applied_volume_factor × line_weight`.
+- `applied_volume_factor = 1 / V_cell` when the cell-volume correction is enabled (otherwise `1`).
 - Reference factors are `R_hkl = N x F2 x LP / V^2` and
   `R_hkl_no_LP = N x F2 / V^2`; they ignore applied-factor toggles and line
   weight and are never described as instrument-calibrated absolute intensity.
@@ -80,7 +81,7 @@ This is a dense scientific analysis workbench, not a landing page. Its first vie
 - Display controls never change peak rows, profile rows, or exported matrices. A reversed d axis keeps matching reversed labels.
 - Structure display-coordinate controls project canonical `y` to signed shuffle or branch-safe magnitude for plots only. Magnitude traces on opposite sides of `y=0.25` are never connected.
 
-## Export Contract 2.2
+## Export Contract 2.3
 
 - Current and Sweep ZIPs add plot_state.json, origin_column_map.csv, origin_import.py, and ORIGIN_README.md without renaming legacy CSV files.
 - Current, Sweep, Live, and Fit packages add `analysis.xlsx` without removing or rewriting CSVs. Every workbook contains README, Parameters, and Columns sheets; HKL labels and stable identifiers use Excel text cells to preserve leading zeroes.

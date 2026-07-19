@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import zipfile
 from pathlib import Path
 from typing import Final
 
@@ -29,6 +28,7 @@ from orthoxrd.export_writer import (
     cleanup_export,
     create_export_path,
     finalize_export,
+    open_deterministic_zip,
     write_binary_entry,
     write_csv_entry,
     write_text_entry,
@@ -43,6 +43,7 @@ FIT_EXPORT_FILES: Final[tuple[str, ...]] = (
     "best_point.csv",
     "residual_at_best.csv",
     "local_minima.csv",
+    "fit_diagnostics.json",
     "analysis.xlsx",
     "config.json",
     "README.md",
@@ -59,7 +60,7 @@ def prepare_fit_export(result: FitResult) -> PreparedExport:
     path = create_export_path()
     digest = fit_export_hash(result)
     metadata: dict[str, ExportFileMeta] = {}
-    with zipfile.ZipFile(path, mode="w", compression=zipfile.ZIP_DEFLATED) as archive:
+    with open_deterministic_zip(path) as archive:
         metadata["observations.csv"] = write_csv_entry(
             archive,
             "observations.csv",
@@ -98,6 +99,11 @@ def prepare_fit_export(result: FitResult) -> PreparedExport:
             "local_minima.csv",
             LOCAL_MINIMA_FIELDS,
             local_minima_rows(result),
+        )
+        metadata["fit_diagnostics.json"] = write_text_entry(
+            archive,
+            "fit_diagnostics.json",
+            fit_diagnostics_json(result),
         )
         metadata["analysis.xlsx"] = write_binary_entry(
             archive,
@@ -163,6 +169,7 @@ def fit_config_json(result: FitResult) -> str:
             "model_zero_tol": options.model_zero_tol,
             "exclude_vanishing_model": options.exclude_vanishing_model,
             "max_local_minima": options.max_local_minima,
+            "profile_delta_chi2": options.profile_delta_chi2,
             "refine": options.refine,
             "refine_xtol": options.refine_xtol,
             "refine_max_iter": options.refine_max_iter,
@@ -180,6 +187,7 @@ def fit_config_json(result: FitResult) -> str:
                 "two_theta_window",
                 "hkl_max",
             ],
+            "identifiability": _identifiability_payload(result),
         },
         "best": {
             "y": result.best.y,
@@ -188,6 +196,7 @@ def fit_config_json(result: FitResult) -> str:
             "shuffle_signed": result.best.shuffle_signed,
             "shuffle_magnitude": result.best.shuffle_magnitude,
             "source": result.best.source,
+            "identifiability": _identifiability_payload(result),
         },
     }
     return json.dumps(payload, ensure_ascii=True, indent=2, sort_keys=True) + "\n"
@@ -206,6 +215,7 @@ def fit_export_hash(result: FitResult) -> str:
         "model_zero_tol": options.model_zero_tol,
         "exclude_vanishing_model": options.exclude_vanishing_model,
         "max_local_minima": options.max_local_minima,
+        "profile_delta_chi2": options.profile_delta_chi2,
         "refine": options.refine,
         "refine_xtol": options.refine_xtol,
         "refine_max_iter": options.refine_max_iter,
@@ -234,6 +244,8 @@ def fit_export_hash(result: FitResult) -> str:
         "chi2": result.best.chi2,
         "source": result.best.source,
     }
+    diagnostics_payload = _identifiability_payload(result)
+    local_minima_payload = list(local_minima_rows(result))
     material = (
         config_json(result.config)
         + json.dumps(options_payload, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
@@ -241,6 +253,18 @@ def fit_export_hash(result: FitResult) -> str:
             observations_payload, ensure_ascii=True, sort_keys=True, separators=(",", ":")
         )
         + json.dumps(best_payload, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
+        + json.dumps(
+            diagnostics_payload,
+            ensure_ascii=True,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        + json.dumps(
+            local_minima_payload,
+            ensure_ascii=True,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
     )
     return hashlib.sha256(material.encode("utf-8")).hexdigest()
 
@@ -256,5 +280,45 @@ def _best_fit_json(result: FitResult) -> str:
         "source": best.source,
         "observable_mode": result.options.observable_mode,
         "weight_mode": result.options.weight_mode,
+        "identifiability": _identifiability_payload(result),
     }
     return json.dumps(payload, ensure_ascii=True, indent=2, sort_keys=True) + "\n"
+
+
+def fit_diagnostics_json(result: FitResult) -> str:
+    """Serialize the profile-delta-chi2 identifiability diagnostic."""
+    payload = {
+        **_identifiability_payload(result),
+        "best_y": result.best.y,
+        "best_chi2": result.best.chi2,
+        "note": (
+            "Profile Δχ² interval is a heuristic built from grid points and refined "
+            "local candidates; it is not a full covariance estimate."
+        ),
+    }
+    return json.dumps(payload, ensure_ascii=True, indent=2, sort_keys=True) + "\n"
+
+
+def _identifiability_payload(result: FitResult) -> dict[str, object]:
+    diagnostic = result.identifiability
+    if diagnostic is None:
+        return {
+            "method": "profile_delta_chi2",
+            "heuristic": True,
+            "delta_chi2_threshold": result.options.profile_delta_chi2,
+            "y_lower": None,
+            "y_upper": None,
+            "status": "not_available",
+            "reasons": ["not_recorded"],
+            "near_best_candidate_count": 0,
+        }
+    return {
+        "method": diagnostic.method,
+        "heuristic": True,
+        "delta_chi2_threshold": diagnostic.delta_chi2_threshold,
+        "y_lower": diagnostic.y_lower,
+        "y_upper": diagnostic.y_upper,
+        "status": diagnostic.status,
+        "reasons": list(diagnostic.reasons),
+        "near_best_candidate_count": diagnostic.near_best_candidate_count,
+    }

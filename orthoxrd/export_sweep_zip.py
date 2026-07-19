@@ -37,6 +37,7 @@ from orthoxrd.export_writer import (
     cleanup_export,
     create_export_path,
     finalize_export,
+    open_deterministic_zip,
     write_binary_entry,
     write_csv_entry,
     write_text_entry,
@@ -134,7 +135,7 @@ def prepare_sweep_export(
     path = create_export_path()
     digest = sweep_hash(result)
     metadata: dict[str, ExportFileMeta] = {}
-    with zipfile.ZipFile(path, mode="w", compression=zipfile.ZIP_DEFLATED) as archive:
+    with open_deterministic_zip(path) as archive:
         write_sweep_payload(archive, result, metadata, plot_state)
         write_text_entry(
             archive,

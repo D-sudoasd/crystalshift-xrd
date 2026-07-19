@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-labelledby="title desc">
   <title id="title">CrystalShift XRD</title>
-  <desc id="desc">Theoretical powder XRD workbench for orthorhombic Cmcm 4c with live evolution and schema 2.2 export.</desc>
+  <desc id="desc">Theoretical powder XRD workbench for orthorhombic Cmcm 4c with live evolution and schema 2.3 export.</desc>
   <rect width="1200" height="360" rx="26" fill="#071018"/>
   <path d="M0 54H1200M700 0V360" stroke="#152028"/>
   <g transform="translate(56 40)" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
@@ -13,9 +13,9 @@
       <text x="72" fill="#6A8A9A">SWEEP</text>
       <text x="152" fill="#6A8A9A">F²</text>
       <text x="200" fill="#6A8A9A">FIT</text>
-      <text x="256" fill="#5EC8E8">SCHEMA 2.2</text>
+      <text x="256" fill="#5EC8E8">SCHEMA 2.3</text>
     </g>
-    <text y="268" fill="#4A6878" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="12">v2.2.0 · Streamlit · not Rietveld · not abs. calibration</text>
+    <text y="268" fill="#4A6878" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="12">v2.3.0 · Streamlit · not Rietveld · not abs. calibration</text>
   </g>
   <g transform="translate(740 48)">
     <rect width="400" height="264" fill="#0A141C" stroke="#1E3040"/>

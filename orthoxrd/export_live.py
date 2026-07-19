@@ -3,7 +3,6 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-import zipfile
 from collections.abc import Iterable, Mapping
 from dataclasses import replace
 from pathlib import Path
@@ -23,6 +22,7 @@ from orthoxrd.export_writer import (
     cleanup_export,
     create_export_path,
     finalize_export,
+    open_deterministic_zip,
     write_csv_entry,
     write_text_entry,
 )
@@ -69,7 +69,7 @@ def prepare_live_export(
     digest = _live_export_hash(result, index, baseline, plot_state)
     path = create_export_path()
     metadata: dict[str, ExportFileMeta] = {}
-    with zipfile.ZipFile(path, mode="w", compression=zipfile.ZIP_DEFLATED) as archive:
+    with open_deterministic_zip(path) as archive:
         workbook = build_live_excel_workbook(
             result,
             sweep,

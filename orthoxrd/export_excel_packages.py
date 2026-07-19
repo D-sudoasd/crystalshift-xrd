@@ -65,6 +65,7 @@ _TEXT_COLUMNS = frozenset(
         "notes",
         "source",
         "sweep_axis",
+        "refine_status",
     }
 )
 
@@ -161,6 +162,11 @@ _COLUMN_DESCRIPTIONS = {
     "notes": "Literal user annotation; never interpreted as an Excel formula.",
     "scale_s": "Closed-form non-negative scale factor S at this y.",
     "chi2": "Weighted residual sum of squares at this y and scale S.",
+    "refined_y": "Locally refined candidate y; blank when refinement was not requested or failed.",
+    "refined_scale_s": "Scale S at the locally refined candidate; blank when unavailable.",
+    "refined_chi2": "Chi-squared at the locally refined candidate; blank when unavailable.",
+    "delta_chi2": "Candidate chi-squared minus the selected best chi-squared.",
+    "refine_status": "Candidate refinement status: not_requested, refined, or failed.",
     "S_I_model": "Fitted intensity S*I_model at the selected best point.",
     "residual": "Observed minus fitted peak intensity.",
     "source": "Whether the selected point came from the grid or local refinement.",
@@ -516,7 +522,7 @@ def _column_unit(field: str) -> str:
         "current_d_A",
     }:
         return "angstrom"
-    if field in {"y", "shuffle_signed", "shuffle_magnitude"}:
+    if field in {"y", "refined_y", "shuffle_signed", "shuffle_magnitude"}:
         return "fractional"
     if "rel_" in field or field.endswith("_pct"):
         return "percent"
@@ -797,6 +803,13 @@ def _fit_parameters(result: FitResult) -> tuple[ExcelParameterSpec, ...]:
         ),
         _parameter(
             "Fit options",
+            "profile_delta_chi2",
+            options.profile_delta_chi2,
+            "Δχ² threshold for the heuristic profile identifiability interval.",
+            "chi2",
+        ),
+        _parameter(
+            "Fit options",
             "refine",
             options.refine,
             "Whether local refinement follows the grid minimum.",
@@ -841,6 +854,56 @@ def _fit_parameters(result: FitResult) -> tuple[ExcelParameterSpec, ...]:
             best.chi2,
             "Weighted residual sum of squares at the selected point.",
             role="result",
+        ),
+        _parameter(
+            "Fit identifiability",
+            "profile_method",
+            (
+                result.identifiability.method
+                if result.identifiability is not None
+                else "profile_delta_chi2"
+            ),
+            (
+                "Profile method used for the y interval; this is a heuristic, "
+                "not a covariance estimate."
+            ),
+            role="diagnostic",
+        ),
+        _parameter(
+            "Fit identifiability",
+            "profile_status",
+            (
+                result.identifiability.status
+                if result.identifiability is not None
+                else "not_available"
+            ),
+            "Identifiability status from the profile Δχ² diagnostic.",
+            role="diagnostic",
+        ),
+        _parameter(
+            "Fit identifiability",
+            "profile_y_lower",
+            result.identifiability.y_lower if result.identifiability is not None else None,
+            "Lower profile Δχ² bound for y; heuristic.",
+            "fractional",
+            "diagnostic",
+        ),
+        _parameter(
+            "Fit identifiability",
+            "profile_y_upper",
+            result.identifiability.y_upper if result.identifiability is not None else None,
+            "Upper profile Δχ² bound for y; heuristic.",
+            "fractional",
+            "diagnostic",
+        ),
+        _parameter(
+            "Fit identifiability",
+            "profile_reasons",
+            "; ".join(result.identifiability.reasons)
+            if result.identifiability is not None
+            else "not_recorded",
+            "Reasons attached to the profile identifiability status.",
+            role="diagnostic",
         ),
         _parameter(
             "Fit result",

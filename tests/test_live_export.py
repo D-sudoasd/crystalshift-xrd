@@ -64,7 +64,9 @@ def test_live_export_contains_float64_analysis_tables_and_frame_comparison() -> 
         )
         live_state = json.loads(archive.read("live_state.json"))
 
-    assert manifest["schema_version"] == "2.2"
+    assert manifest["schema_version"] == "2.3"
+    assert manifest["generated_at_utc"] is None
+    assert manifest["deterministic"] is True
     assert manifest["export_kind"] == "live"
     assert "analysis.xlsx" in manifest["files"]
     assert hashlib.sha256(workbook).hexdigest() == manifest["files"]["analysis.xlsx"][
@@ -81,6 +83,20 @@ def test_live_export_contains_float64_analysis_tables_and_frame_comparison() -> 
     assert live_state["baseline_index"] != live_state["current_index"]
     assert comparison[20]["baseline_q_A_inv"] != comparison[20]["current_q_A_inv"]
     assert comparison[20]["baseline_d_A"] != comparison[20]["current_d_A"]
+
+
+def test_live_zip_is_byte_deterministic_for_same_result() -> None:
+    preview = generate_live_preview(
+        LivePreviewConfig(
+            base=_config(),
+            axis="y",
+            start=0.221,
+            stop=0.223,
+            step=0.001,
+            preview_points=101,
+        )
+    )
+    assert build_live_zip(preview, current_index=1) == build_live_zip(preview, current_index=1)
 
 
 def test_live_export_hash_includes_plot_state() -> None:

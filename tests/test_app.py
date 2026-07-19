@@ -453,6 +453,28 @@ def test_fit_renders_four_diagnostics_and_coordinate_toggle() -> None:
     assert len(app.main.get("plotly_chart")) == 4
 
 
+def test_fit_exposes_profile_identifiability_and_candidate_apply() -> None:
+    app = _app()
+    app.run(timeout=30)
+    _select_view(app, "fit")
+    _run_fit(app)
+
+    page = _all_text(app)
+    assert ZH_TEXT["fit.identifiability.header"] in page
+    assert ZH_TEXT["fit.local_minima.select"] in {
+        item.label for item in app.main.selectbox
+    }
+    candidate_button = next(
+        button
+        for button in app.main.button
+        if button.label == ZH_TEXT["fit.apply_candidate"]
+    )
+    assert not candidate_button.disabled
+    candidate_button.click().run(timeout=30)
+    assert not app.exception
+    assert any("选中候选" in str(item.value) for item in app.main.success)
+
+
 def test_fit_apply_writes_y_star_only_on_click() -> None:
     app = _app()
     app.run(timeout=30)

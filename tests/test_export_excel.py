@@ -61,6 +61,8 @@ def test_workbook_is_analysis_ready_and_preserves_hkl_as_safe_text() -> None:
     )
 
     with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+        core = archive.read("docProps/core.xml")
+        assert b"1980-01-01T00:00:00Z" in core
         sheets = _sheet_paths(archive)
         assert list(sheets) == ["README", "Parameters", "Columns", "Peaks"]
 

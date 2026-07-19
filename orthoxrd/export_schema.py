@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Final
 
 CsvValue = str | int | float
-EXPORT_SCHEMA_VERSION: Final[str] = "2.2"
+EXPORT_SCHEMA_VERSION: Final[str] = "2.3"
 
 F2_EVOLUTION_FIELDS: Final[tuple[str, ...]] = (
     "axis_value",

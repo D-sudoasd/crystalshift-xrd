@@ -19,7 +19,7 @@ EN_TEXT: dict[str, str] = {
     "common.on": "on",
     "common.off": "off",
     "app.page_title": "CrystalShift XRD",
-    "app.model_tag": "Cmcm 4c | schema 2.2",
+    "app.model_tag": "Cmcm 4c | schema 2.3",
     "app.subtitle": (
         "Kinematic powder model for lattice, Wyckoff-y, shuffle, and incident-radiation studies."
     ),
@@ -283,7 +283,7 @@ EN_TEXT: dict[str, str] = {
         "the final frame when the slider is released."
     ),
     "live.export.prepare": "Prepare live evolution ZIP",
-    "live.export.spinner": "Building schema 2.2 live analysis package...",
+    "live.export.spinner": "Building schema 2.3 live analysis package...",
     "live.export.caption_prepare": "Prepare the full-precision live ZIP on demand.",
     "live.export.caption_changed": "The live selection changed. Prepare the ZIP again.",
     "live.export.download": "Download live_evolution.zip",
@@ -335,8 +335,8 @@ EN_TEXT: dict[str, str] = {
         "Preview is limited to 500 peak rows. The ZIP contains the complete tables."
     ),
     "sweep.prepare": "Prepare sweep ZIP",
-    "sweep.spinner": "Streaming schema 2.2 files into ZIP...",
-    "sweep.prepare_caption": "Run the active configuration, then prepare the schema 2.2 ZIP.",
+    "sweep.spinner": "Streaming schema 2.3 files into ZIP...",
+    "sweep.prepare_caption": "Run the active configuration, then prepare the schema 2.3 ZIP.",
     "sweep.download": "Download sweep ZIP",
     "sweep.export_size": "{kib:.1f} KiB | SHA-256 {sha}...",
     "sweep.calc_spinner": "Calculating sweep...",
@@ -396,7 +396,7 @@ EN_TEXT: dict[str, str] = {
     "sweep.plot.intensity": "intensity",
     "export.prepare": "Prepare current ZIP",
     "export.spinner": "Preparing current simulation export...",
-    "export.caption": "Schema 2.2 export is prepared on demand.",
+    "export.caption": "Schema 2.3 export is prepared on demand.",
     "export.expired": "Prepared export expired. Prepare it again.",
     "export.download": "Download current ZIP",
     "export.size": "{kib:.1f} KiB | SHA-256 {sha}...",
@@ -518,8 +518,48 @@ EN_TEXT: dict[str, str] = {
     "fit.diagnostics.contributions": (
         "Per-HKL w·residual²; the bar total reconstructs the best χ²."
     ),
+    "fit.identifiability.header": "##### y identifiability (profile Δχ² heuristic)",
+    "fit.identifiability.status_label": "Status",
+    "fit.identifiability.interval_label": "Heuristic y interval",
+    "fit.identifiability.no_interval": "not available",
+    "fit.identifiability.no_reason": "none recorded",
+    "fit.identifiability.note": (
+        "Threshold Δχ²={threshold:.6g}; reasons: {reasons}. This profile is built from "
+        "the grid and refined candidates, not a full covariance estimate."
+    ),
+    "fit.identifiability.status.identified": "identified",
+    "fit.identifiability.status.boundary_limited": "boundary-limited",
+    "fit.identifiability.status.multi_modal": "multi-modal",
+    "fit.identifiability.status.flat": "flat",
+    "fit.identifiability.status.not_available": "not available",
+    "fit.identifiability.warning.multi_modal": (
+        "Multiple local candidates fall within the profile threshold; the best candidate "
+        "is not automatically a unique physical solution."
+    ),
+    "fit.identifiability.warning.boundary_limited": (
+        "The profile interval reaches the selected y scan boundary; extend the scan before "
+        "treating the interval as internally bounded."
+    ),
+    "fit.identifiability.warning.flat": (
+        "The profile stays within the threshold across the scan; y is weakly identified "
+        "by these observations."
+    ),
+    "fit.identifiability.identified": (
+        "The profile is internally bounded and no additional near-best candidate was found. "
+        "This remains a heuristic diagnostic."
+    ),
+    "fit.identifiability.unavailable": "The profile identifiability diagnostic is not available.",
     "fit.local_minima.header": "##### Local minimum candidates",
     "fit.local_minima.empty": "No neighbourhood minima on the grid χ² curve.",
+    "fit.local_minima.select": "Candidate to apply",
+    "fit.local_minima.select_help": (
+        "Choose a reported local candidate. The refined y is used when refinement succeeded."
+    ),
+    "fit.apply_candidate": "Apply selected candidate",
+    "fit.apply_candidate_help": (
+        "Apply only the selected candidate to the structure panel; this never changes the "
+        "fit's automatically selected best point."
+    ),
     "fit.residuals.header": "##### Residuals at best",
     "fit.apply": "Apply y* to structure",
     "fit.apply_caption": (
@@ -527,6 +567,7 @@ EN_TEXT: dict[str, str] = {
         "Applying y* updates Wyckoff y and shuffle magnitude."
     ),
     "fit.apply_success": "Applied y* = {y:.6f} to structure parameters.",
+    "fit.apply_candidate_success": "Applied selected candidate y = {y:.6f} to structure parameters.",
     "fit.prepare": "Prepare fit ZIP",
     "fit.spinner": "Streaming fit process tables into ZIP...",
     "fit.prepare_caption": "Run a fresh fit, then prepare the process-table ZIP.",
@@ -571,10 +612,10 @@ independent evidence. Each 4c site's displacement from that reference is
 
 #### Peak intensity
 
-**I_model_peak = F2 x applied_multiplicity x applied_LP x applied_volume x line_weight**
+**I_model_peak = F² × applied_multiplicity × applied_LP × applied_volume_factor × line_weight**
 
-Each applied factor is exported separately. applied_volume is either 1/V
-or 1, preserving the selected model contract.
+Each applied factor is exported separately. applied_volume_factor is 1/V_cell
+when the volume correction is enabled, and 1 otherwise.
 
 The export also provides reference factors that do not use correction toggles
 or radiation-line weight:
@@ -930,7 +971,7 @@ EN_HELP: dict[str, str] = {
         "Prepare after choosing baseline and current frames.",
         "Re-prepare if the selection changes.",
     ),
-    "live.export.download": _h("Download live_evolution.zip.", "Offline analysis.", "Includes live_state.json.", "Schema 2.2."),
+    "live.export.download": _h("Download live_evolution.zip.", "Offline analysis.", "Includes live_state.json.", "Schema 2.3."),
     "sweep.spectrum_points": _h(
         "Spectrum samples per sweep step.",
         "Controls memory and ZIP size.",
@@ -970,7 +1011,7 @@ EN_HELP: dict[str, str] = {
     "sweep.result_view": _h("Switch heatmap, waterfall, peak evolution, or data preview.", "Multiple views of one result.", "Heatmap first, then peak evolution.", "Display crop does not shrink exports."),
     "sweep.peak_metric": _h("Vertical metric for peak-evolution curves.", "F2, N x F2, R, and model intensity use different definitions.", "Choose the R convention according to whether experimental areas are LP-corrected.", "R is an unnormalized model reference factor, not instrument-calibrated absolute intensity."),
     "sweep.peak_series": _h("Track up to 12 peak series.", "Follow key HKLs across the sweep.", "Select 110/020 etc.", "Extinct peaks stay as zeros so curves do not break."),
-    "sweep.prepare": _h("Build the schema 2.2 sweep ZIP.", "Full reproducible package.", "Available when the result is fresh.", "Disabled while stale."),
+    "sweep.prepare": _h("Build the schema 2.3 sweep ZIP.", "Full reproducible package.", "Available when the result is fresh.", "Disabled while stale."),
     "sweep.download": _h("Download the prepared sweep ZIP.", "Origin/Python workflows.", "Includes matrices and checksums.", "English file names."),
     "sweep.display_range": _h("Crop only heatmap/waterfall display windows.", "ZIP still holds the full simulation window.", "Zoom a 2theta region.", "Bounds must be ordered."),
     "sweep.display_coordinate": _h(
@@ -990,7 +1031,7 @@ EN_HELP: dict[str, str] = {
         "Prepare after the active model looks right.",
         "Config changes invalidate the previous package.",
     ),
-    "export.download": _h("Download current_simulation.zip.", "Archival and plotting.", "Includes Origin helpers.", "Schema 2.2."),
+    "export.download": _h("Download current_simulation.zip.", "Archival and plotting.", "Includes Origin helpers.", "Schema 2.3."),
     "fit.obs.upload": _h(
         "Upload a discrete peak observation CSV.",
         "Brings lab peak strengths into the inverse fit.",

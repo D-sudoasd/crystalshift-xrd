@@ -4,6 +4,7 @@ import math
 import tempfile
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
+from datetime import datetime
 from numbers import Integral, Real
 from pathlib import Path
 
@@ -17,6 +18,7 @@ EXCEL_MAX_ROWS = 1_048_576
 EXCEL_MAX_COLUMNS = 16_384
 EXCEL_MAX_CELL_CHARACTERS = 32_767
 _METADATA_SHEETS = ("README", "Parameters", "Columns")
+_DETERMINISTIC_DATETIME = datetime(1980, 1, 1, 0, 0, 0)
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,6 +80,12 @@ def build_excel_workbook(
             },
         )
         try:
+            workbook.set_properties(
+                {
+                    "created": _DETERMINISTIC_DATETIME,
+                    "modified": _DETERMINISTIC_DATETIME,
+                }
+            )
             formats = _formats(workbook)
             _write_readme(
                 workbook,

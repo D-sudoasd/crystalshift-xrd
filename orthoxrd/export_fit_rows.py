@@ -71,6 +71,11 @@ LOCAL_MINIMA_FIELDS: Final[tuple[str, ...]] = (
     "y",
     "scale_s",
     "chi2",
+    "refined_y",
+    "refined_scale_s",
+    "refined_chi2",
+    "delta_chi2",
+    "refine_status",
     "shuffle_signed",
     "shuffle_magnitude",
     "branch",
@@ -152,11 +157,21 @@ def residual_at_best_rows(result: FitResult) -> Iterable[Mapping[str, CsvValue]]
 
 def local_minima_rows(result: FitResult) -> Iterable[Mapping[str, CsvValue]]:
     for candidate in result.local_minima:
+        refined_y = candidate.refined_y
+        refined_chi2 = candidate.refined_chi2
+        effective_chi2 = refined_chi2 if refined_chi2 is not None else candidate.chi2
         yield {
             "grid_index": candidate.grid_index,
             "y": candidate.y,
             "scale_s": candidate.scale_s,
             "chi2": candidate.chi2,
+            "refined_y": refined_y if refined_y is not None else "",
+            "refined_scale_s": (
+                candidate.refined_scale_s if candidate.refined_scale_s is not None else ""
+            ),
+            "refined_chi2": refined_chi2 if refined_chi2 is not None else "",
+            "delta_chi2": effective_chi2 - result.best.chi2,
+            "refine_status": candidate.refine_status,
             **_structure_coordinate_fields(candidate.y),
         }
 

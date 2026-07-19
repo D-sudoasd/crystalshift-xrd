@@ -7,12 +7,23 @@ import pytest
 from orthoxrd.config import SimulationConfig
 from orthoxrd.fit import (
     _local_minimum_candidates,
+    _profile_identifiability,
     chi_squared,
     closed_form_scale,
+    evaluate_fit_model_intensities,
+    evaluate_reference_fit_model_intensities,
     resolve_weight,
     run_discrete_peak_fit,
+    validate_discrete_peak_fit_observations,
 )
-from orthoxrd.fit_models import FitError, FitOptions, GridScanPoint, PeakObservation
+from orthoxrd.fit_models import (
+    BestFit,
+    FitError,
+    FitOptions,
+    GridScanPoint,
+    LocalMinimumCandidate,
+    PeakObservation,
+)
 from orthoxrd.models import LatticeParameters, RadiationLine
 from orthoxrd.powder import calculate_reflections
 
@@ -153,6 +164,8 @@ def test_noise_free_round_trip_recovers_y_and_s() -> None:
     assert result.refine_trace  # refinement ran
     assert all(item.included for item in result.matched)
     assert len(result.residuals_at_best) == len(observations)
+    assert result.identifiability is not None
+    assert all(item.refine_status == "refined" for item in result.local_minima)
 
 
 def test_unmatched_hkl_hard_fails_with_row_identity() -> None:
@@ -429,6 +442,98 @@ def test_local_minimum_candidates_neighbourhood_endpoint_and_cap() -> None:
     )
     left_flat_candidates = _local_minimum_candidates(left_flat, max_count=5)
     assert not any(item.grid_index == 0 for item in left_flat_candidates)
+
+
+def test_fit_direct_and_reference_evaluators_have_numeric_parity() -> None:
+    config = _config()
+    observations = _synthetic_observations(
+        config,
+        [(0, 2, 0), (0, 0, 2), (1, 1, 1), (1, 1, 0)],
+        y=0.213,
+    )
+    matched = validate_discrete_peak_fit_observations(config, observations)
+    direct = evaluate_fit_model_intensities(config, matched, 0.213)
+    reference = evaluate_reference_fit_model_intensities(config, matched, 0.213)
+    assert direct == pytest.approx(reference, rel=1e-12, abs=1e-12)
+
+
+@pytest.mark.parametrize("value", [0.0, -1.0, float("nan"), float("inf")])
+def test_profile_delta_chi2_threshold_must_be_finite_and_positive(value: float) -> None:
+    with pytest.raises(ValueError, match="profile_delta_chi2"):
+        FitOptions(profile_delta_chi2=value)
+
+
+def _best_fit(y: float, chi2: float) -> BestFit:
+    return BestFit(
+        y=y,
+        scale_s=1.0,
+        chi2=chi2,
+        shuffle_signed=2.0 * (y - 0.25),
+        shuffle_magnitude=abs(2.0 * (y - 0.25)),
+        source="grid",
+    )
+
+
+def test_profile_identifiability_classifies_bounded_flat_boundary_and_multimodal() -> None:
+    bounded_options = FitOptions(y_start=0.0, y_stop=0.5, grid_points=3)
+    bounded = _profile_identifiability(
+        (
+            GridScanPoint(0.0, 1.0, 2.0),
+            GridScanPoint(0.25, 1.0, 0.0),
+            GridScanPoint(0.5, 1.0, 2.0),
+        ),
+        _best_fit(0.25, 0.0),
+        (),
+        bounded_options,
+    )
+    assert bounded.status == "identified"
+    assert bounded.y_lower == pytest.approx(0.125)
+    assert bounded.y_upper == pytest.approx(0.375)
+
+    flat = _profile_identifiability(
+        (
+            GridScanPoint(0.0, 1.0, 0.0),
+            GridScanPoint(0.1, 1.0, 0.0),
+            GridScanPoint(0.2, 1.0, 0.0),
+        ),
+        _best_fit(0.1, 0.0),
+        (),
+        FitOptions(y_start=0.0, y_stop=0.2, grid_points=3),
+    )
+    assert flat.status == "flat"
+    assert flat.y_lower == pytest.approx(0.0)
+    assert flat.y_upper == pytest.approx(0.2)
+
+    boundary = _profile_identifiability(
+        (
+            GridScanPoint(0.2, 1.0, 0.0),
+            GridScanPoint(0.25, 1.0, 2.0),
+            GridScanPoint(0.3, 1.0, 2.0),
+        ),
+        _best_fit(0.2, 0.0),
+        (LocalMinimumCandidate(0.2, 1.0, 0.0, 0),),
+        FitOptions(y_start=0.2, y_stop=0.3, grid_points=3),
+    )
+    assert boundary.status == "boundary_limited"
+    assert "lower_bound_reached" in boundary.reasons
+
+    multimodal = _profile_identifiability(
+        (
+            GridScanPoint(0.0, 1.0, 2.0),
+            GridScanPoint(0.1, 1.0, 0.0),
+            GridScanPoint(0.2, 1.0, 2.0),
+            GridScanPoint(0.3, 1.0, 0.0),
+            GridScanPoint(0.4, 1.0, 2.0),
+        ),
+        _best_fit(0.1, 0.0),
+        (
+            LocalMinimumCandidate(0.1, 1.0, 0.0, 1),
+            LocalMinimumCandidate(0.3, 1.0, 0.0, 3),
+        ),
+        FitOptions(y_start=0.0, y_stop=0.4, grid_points=5),
+    )
+    assert multimodal.status == "multi_modal"
+    assert "multiple_near_best_candidates" in multimodal.reasons
 
 
 def test_duplicate_radiation_line_labels_hard_fail() -> None:

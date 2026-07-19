@@ -6,7 +6,7 @@
 
 **How lattice, Wyckoff `y`, basal shuffle, and energy move powder peaks and F².**
 
-Streamlit workbench for theoretical powder XRD of orthorhombic **`Cmcm 4c`**. Version `2.2.0` · export schema `2.2`.
+Streamlit workbench for theoretical powder XRD of orthorhombic **`Cmcm 4c`**. Version `2.3.0` · export schema `2.3`.
 
 > Theoretical model only — not Rietveld, not absolute intensity calibration.
 
@@ -20,7 +20,8 @@ Streamlit workbench for theoretical powder XRD of orthorhombic **`Cmcm 4c`**. Ve
 
 shuffle_signed = 2*(y-0.25)
 wavelength_A   = 12.398419843320026 / energy_keV
-I_model_peak   = F2 · mult · LP · V · line_weight
+I_model_peak   = F² × applied_multiplicity × applied_LP × applied_volume_factor × line_weight
+applied_volume_factor = 1 / V_cell when the cell-volume correction is enabled; otherwise 1
 ```
 
 `R_hkl` with/without LP for experimental area post-processing (theoretical only).
@@ -44,7 +45,7 @@ Open http://localhost:8508/
 - **Live evolution** — exact precomputed frames; browser switches locally  
 - **F² evolution** + structure preview along `b`  
 - **Sweep / trajectory** CSV · **discrete-peak fit** diagnostics  
-- Schema 2.2 ZIP + `analysis.xlsx` with hashes and checksums  
+- Schema 2.3 ZIP + `analysis.xlsx` with hashes and checksums
 
 Does **not** implement Rietveld/Le Bail/Pawley, texture, absorption, size/strain, zero shift, background, phase fractions, or absolute calibration.
 
@@ -52,4 +53,4 @@ Does **not** implement Rietveld/Le Bail/Pawley, texture, absorption, size/strain
 python -m pytest -q && python -m ruff check .
 ```
 
-No open-source license selected yet — publication of source does not grant redistribution of modified versions until `LICENSE` is added. Cite the structure source and keep export manifests with figures.
+Released under the MIT License; see [`LICENSE`](LICENSE). Cite the structure source and keep export manifests with figures.

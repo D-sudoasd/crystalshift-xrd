@@ -8,6 +8,14 @@ from orthoxrd.config import SimulationConfig
 
 ObservableMode = Literal["peak_area", "peak_height"]
 WeightMode = Literal["poisson", "equal"]
+CandidateRefineStatus = Literal["not_requested", "refined", "failed"]
+IdentifiabilityStatus = Literal[
+    "identified",
+    "boundary_limited",
+    "multi_modal",
+    "flat",
+    "not_available",
+]
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,6 +61,7 @@ class FitOptions:
     refine: bool = True
     refine_xtol: float = 1e-10
     refine_max_iter: int = 80
+    profile_delta_chi2: float = 1.0
 
     def __post_init__(self) -> None:
         if self.observable_mode not in ("peak_area", "peak_height"):
@@ -77,6 +86,8 @@ class FitOptions:
             raise ValueError("refine_xtol must be positive")
         if self.refine_max_iter < 1:
             raise ValueError("refine_max_iter must be at least 1")
+        if not math.isfinite(self.profile_delta_chi2) or self.profile_delta_chi2 <= 0:
+            raise ValueError("profile_delta_chi2 must be positive")
 
 
 @dataclass(frozen=True, slots=True)
@@ -127,6 +138,21 @@ class LocalMinimumCandidate:
     scale_s: float
     chi2: float
     grid_index: int
+    refined_y: float | None = None
+    refined_scale_s: float | None = None
+    refined_chi2: float | None = None
+    refine_status: CandidateRefineStatus = "not_requested"
+
+
+@dataclass(frozen=True, slots=True)
+class FitIdentifiability:
+    method: Literal["profile_delta_chi2"]
+    delta_chi2_threshold: float
+    y_lower: float | None
+    y_upper: float | None
+    status: IdentifiabilityStatus
+    reasons: tuple[str, ...]
+    near_best_candidate_count: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -172,3 +198,4 @@ class FitResult:
     residuals_at_best: tuple[ResidualAtBest, ...]
     local_minima: tuple[LocalMinimumCandidate, ...]
     warnings: tuple[str, ...]
+    identifiability: FitIdentifiability | None = None

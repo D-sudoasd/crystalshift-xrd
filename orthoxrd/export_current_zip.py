@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import zipfile
 from pathlib import Path
 
 from orthoxrd.config import config_hash, config_payload
@@ -22,6 +21,7 @@ from orthoxrd.export_writer import (
     cleanup_export,
     create_export_path,
     finalize_export,
+    open_deterministic_zip,
     write_binary_entry,
     write_csv_entry,
     write_text_entry,
@@ -50,7 +50,7 @@ def prepare_current_export(
     path = create_export_path()
     digest = config_hash(result.config)
     metadata: dict[str, ExportFileMeta] = {}
-    with zipfile.ZipFile(path, mode="w", compression=zipfile.ZIP_DEFLATED) as archive:
+    with open_deterministic_zip(path) as archive:
         metadata["spectrum.csv"] = write_csv_entry(
             archive, "spectrum.csv", CURRENT_SPECTRUM_FIELDS, current_spectrum_rows(result)
         )

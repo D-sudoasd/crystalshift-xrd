@@ -4,14 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "orthorhombic-xrd-simulator"
-version = "2.2.0"
+version = "2.3.0"
 description = "CrystalShift XRD: scientific Streamlit workbench for Cmcm 4c powder XRD simulation"
 readme = "README.md"
+license = { file = "LICENSE" }
 requires-python = ">=3.11"
 dependencies = [
     "numpy>=1.26,<3",
     "plotly>=5.20,<7",
-    "pymatgen>=2024.5",
+    "pymatgen>=2024.5,<2027",
     "streamlit>=1.57,<2",
     "xlsxwriter>=3.2,<4",
 ]
@@ -46,5 +47,4 @@ include = ["orthoxrd", "app.py"]
 pythonVersion = "3.11"
 typeCheckingMode = "standard"
 reportMissingTypeStubs = false
-extraPaths = ["C:/Users/AORUS/AppData/Local/Programs/Python/Python311/Lib/site-packages"]
 exclude = ["**/__pycache__"]

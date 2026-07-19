@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import math
 from collections.abc import Callable, Sequence
-from dataclasses import replace
+from dataclasses import dataclass, replace
 
 from orthoxrd.config import SimulationConfig
 from orthoxrd.fit_models import (
     BestFit,
+    CandidateRefineStatus,
     FitError,
+    FitIdentifiability,
     FitIssue,
     FitOptions,
     FitResult,
@@ -18,8 +20,42 @@ from orthoxrd.fit_models import (
     RefineTracePoint,
     ResidualAtBest,
 )
-from orthoxrd.powder import calculate_reflections
-from orthoxrd.structure_factor import signed_shuffle_from_y, validate_y
+from orthoxrd.powder import (
+    calculate_model_peak_intensity,
+    calculate_reflection_for_hkl,
+    calculate_reflections,
+)
+from orthoxrd.structure_factor import (
+    cmcm_4c_structure_factor,
+    signed_shuffle_from_y,
+    validate_y,
+)
+
+
+@dataclass(frozen=True, slots=True)
+class _PeakGeometry:
+    h: int
+    k: int
+    l: int
+    line_id: str
+    line_weight: float
+    d_spacing: float
+    two_theta: float
+    form_factor: float
+    multiplicity: int
+    lp_factor: float
+    cell_volume: float
+    applied_multiplicity: float
+    applied_lp: float
+    applied_volume_factor: float
+
+
+@dataclass(frozen=True, slots=True)
+class _CandidateRefinement:
+    y: float | None
+    scale_s: float | None
+    chi2: float | None
+    status: CandidateRefineStatus
 
 
 def run_discrete_peak_fit(
@@ -30,8 +66,8 @@ def run_discrete_peak_fit(
     """Estimate Wyckoff y and scale factor S from observed peak intensities.
 
     Pure scientific seam: no Streamlit. Reuses the forward model peak intensity
-    path (``calculate_reflections``) with a, b, c, radiation, and corrections
-    fixed from ``config``. Free parameters are y and S only.
+    contract with a, b, c, radiation, and corrections fixed from ``config``.
+    Free parameters are y and S only.
 
     ``FitOptions.observable_mode`` is accepted for API stability; v1 treats
     ``peak_height`` as an equal-width proxy of model peak intensity (same
@@ -51,9 +87,10 @@ def run_discrete_peak_fit(
                 "matching (forward model enumerates the non-negative octant)"
             )
     included = [item for item in matched if item.included]
+    geometry = _build_peak_geometry(config, matched)
 
     y_grid = _uniform_grid(options.y_start, options.y_stop, options.grid_points)
-    model_matrix, vanishing = _model_intensity_matrix(config, included, y_grid, options)
+    model_matrix, vanishing = _model_intensity_matrix(geometry, included, y_grid, options)
     # ``vanishing`` is a non-empty list[bool]; only rebuild when at least one peak
     # is actually flagged (a non-empty list is always truthy in Python).
     if options.exclude_vanishing_model and any(vanishing):
@@ -87,7 +124,7 @@ def run_discrete_peak_fit(
                     ),
                 )
             )
-        model_matrix, _ = _model_intensity_matrix(config, included, y_grid, options)
+        model_matrix, _ = _model_intensity_matrix(geometry, included, y_grid, options)
 
     weights = [item.weight for item in included]
     i_obs = [item.observation.I_obs for item in included]
@@ -98,7 +135,7 @@ def run_discrete_peak_fit(
         scale_s, chi2 = _closed_form_scale_and_chi2(i_obs, i_model, weights)
         grid_scan.append(GridScanPoint(y=y_value, scale_s=scale_s, chi2=chi2))
 
-    local_minima = _local_minimum_candidates(grid_scan, options.max_local_minima)
+    all_local_minima = _local_minimum_candidates(grid_scan, None)
     best_grid_index = min(range(len(grid_scan)), key=lambda i: grid_scan[i].chi2)
     best_grid = grid_scan[best_grid_index]
 
@@ -108,24 +145,71 @@ def run_discrete_peak_fit(
     best_chi2 = best_grid.chi2
     source = "grid"
 
+    candidate_refinements: dict[int, _CandidateRefinement] = {}
+
     if options.refine and options.y_stop > options.y_start:
 
         def objective(y_trial: float) -> tuple[float, float, float]:
-            i_model = _model_intensities_at_y(config, included, y_trial)
+            i_model = _model_intensities_at_y(geometry, included, y_trial)
             scale_s, chi2 = _closed_form_scale_and_chi2(i_obs, i_model, weights)
             return chi2, scale_s, y_trial
 
-        bracket = _refinement_bracket(y_grid, best_grid_index, options)
-        refined_y, refined_s, refined_chi2, refine_trace = _brent_minimize(
-            objective,
-            bracket[0],
-            bracket[1],
-            xtol=options.refine_xtol,
-            max_iter=options.refine_max_iter,
-        )
-        if refined_chi2 <= best_chi2:
-            best_y, best_s, best_chi2 = refined_y, refined_s, refined_chi2
-            source = "refine"
+        try:
+            best_refinement = _refine_grid_candidate(
+                objective,
+                y_grid,
+                best_grid_index,
+                options,
+            )
+        except (FloatingPointError, ValueError):
+            candidate_refinements[best_grid_index] = _CandidateRefinement(
+                None,
+                None,
+                None,
+                "failed",
+            )
+        else:
+            refined_y, refined_s, refined_chi2, refine_trace = best_refinement
+            candidate_refinements[best_grid_index] = _CandidateRefinement(
+                refined_y,
+                refined_s,
+                refined_chi2,
+                "refined",
+            )
+            if refined_chi2 <= best_chi2:
+                best_y, best_s, best_chi2 = refined_y, refined_s, refined_chi2
+                source = "refine"
+
+        for candidate in all_local_minima:
+            if candidate.grid_index == best_grid_index:
+                continue
+            try:
+                refined = _refine_grid_candidate(
+                    objective,
+                    y_grid,
+                    candidate.grid_index,
+                    options,
+                )
+            except (FloatingPointError, ValueError):
+                candidate_refinements[candidate.grid_index] = _CandidateRefinement(
+                    None,
+                    None,
+                    None,
+                    "failed",
+                )
+            else:
+                candidate_refinements[candidate.grid_index] = _CandidateRefinement(
+                    refined[0],
+                    refined[1],
+                    refined[2],
+                    "refined",
+                )
+
+    refined_local_minima = [
+        _attach_candidate_refinement(candidate, candidate_refinements)
+        for candidate in all_local_minima
+    ]
+    local_minima = refined_local_minima[: options.max_local_minima]
 
     shuffle = signed_shuffle_from_y(best_y)
     best = BestFit(
@@ -136,7 +220,13 @@ def run_discrete_peak_fit(
         shuffle_magnitude=abs(shuffle),
         source=source,
     )
-    residuals = _residuals_at_best(config, matched, best_y, best_s)
+    identifiability = _profile_identifiability(
+        grid_scan,
+        best,
+        refined_local_minima,
+        options,
+    )
+    residuals = _residuals_at_best(geometry, matched, best_y, best_s)
     return FitResult(
         config=config,
         options=options,
@@ -147,6 +237,7 @@ def run_discrete_peak_fit(
         residuals_at_best=tuple(residuals),
         local_minima=tuple(local_minima),
         warnings=tuple(warnings),
+        identifiability=identifiability,
     )
 
 
@@ -468,8 +559,58 @@ def _uniform_grid(start: float, stop: float, points: int) -> list[float]:
     return [start + index * step for index in range(points)]
 
 
-def _model_intensity_matrix(
+def _build_peak_geometry(
     config: SimulationConfig,
+    matched: Sequence[MatchedObservation],
+) -> dict[tuple[str, int, int, int], _PeakGeometry]:
+    geometry: dict[tuple[str, int, int, int], _PeakGeometry] = {}
+    for item in matched:
+        obs = item.observation
+        key = (item.line_id, abs(obs.h), abs(obs.k), abs(obs.l))
+        if key in geometry:
+            continue
+        line_index = int(item.line_id.rsplit("_", maxsplit=1)[1])
+        line = config.lines[line_index]
+        reflection = calculate_reflection_for_hkl(
+            h=key[1],
+            k=key[2],
+            l=key[3],
+            lattice=config.lattice,
+            y=config.y,
+            wavelength_a=line.wavelength_a,
+            two_theta_min=config.two_theta_min,
+            two_theta_max=config.two_theta_max,
+            scattering_mode=config.scattering_mode,
+            composition=config.composition,
+            include_lorentz_polarization=config.include_lorentz_polarization,
+            include_multiplicity=config.include_multiplicity,
+            include_cell_volume=config.include_cell_volume,
+        )
+        if reflection is None:
+            raise ValueError(
+                f"matched HKL is outside the active model window: {key[1:]} {item.line_id}"
+            )
+        geometry[key] = _PeakGeometry(
+            h=reflection.h,
+            k=reflection.k,
+            l=reflection.l,
+            line_id=item.line_id,
+            line_weight=line.weight,
+            d_spacing=reflection.d_spacing_a,
+            two_theta=reflection.two_theta_deg,
+            form_factor=reflection.form_factor_effective,
+            multiplicity=reflection.multiplicity,
+            lp_factor=reflection.lorentz_polarization,
+            cell_volume=reflection.cell_volume_a3,
+            applied_multiplicity=reflection.applied_multiplicity,
+            applied_lp=reflection.applied_lorentz_polarization,
+            applied_volume_factor=reflection.applied_volume_factor,
+        )
+    return geometry
+
+
+def _model_intensity_matrix(
+    geometry: dict[tuple[str, int, int, int], _PeakGeometry],
     included: Sequence[MatchedObservation],
     y_grid: Sequence[float],
     options: FitOptions,
@@ -477,7 +618,7 @@ def _model_intensity_matrix(
     matrix: list[list[float]] = []
     max_abs: list[float] = [0.0] * len(included)
     for y_value in y_grid:
-        row = _model_intensities_at_y(config, included, y_value)
+        row = _model_intensities_at_y(geometry, included, y_value)
         matrix.append(row)
         for index, value in enumerate(row):
             max_abs[index] = max(max_abs[index], abs(value))
@@ -486,47 +627,84 @@ def _model_intensity_matrix(
 
 
 def _model_intensities_at_y(
-    config: SimulationConfig,
+    geometry: dict[tuple[str, int, int, int], _PeakGeometry],
     included: Sequence[MatchedObservation],
     y_value: float,
 ) -> list[float]:
     validate_y(y_value)
-    # Build per-line intensity maps once per evaluation.
-    by_line: dict[str, dict[tuple[int, int, int], float]] = {}
-    needed_lines = {item.line_id for item in included}
-    for line_index, line in enumerate(config.lines):
-        line_id = f"line_{line_index:02d}"
-        if line_id not in needed_lines:
+    values: list[float] = []
+    for item in included:
+        obs = item.observation
+        key = (item.line_id, abs(obs.h), abs(obs.k), abs(obs.l))
+        peak = geometry.get(key)
+        if peak is None:
+            values.append(0.0)
             continue
-        reflections = calculate_reflections(
+        structure_factor = cmcm_4c_structure_factor(
+            peak.h,
+            peak.k,
+            peak.l,
+            y_value,
+            peak.form_factor,
+        )
+        structure_factor_squared = float((structure_factor * structure_factor.conjugate()).real)
+        if abs(structure_factor_squared) < 1e-12:
+            structure_factor_squared = 0.0
+        intensity = calculate_model_peak_intensity(
+            structure_factor_squared,
+            applied_multiplicity=peak.applied_multiplicity,
+            applied_lorentz_polarization=peak.applied_lp,
+            applied_volume_factor=peak.applied_volume_factor,
+            line_weight=peak.line_weight,
+        )
+        values.append(intensity)
+    return values
+
+
+def evaluate_fit_model_intensities(
+    config: SimulationConfig,
+    matched: Sequence[MatchedObservation],
+    y: float,
+) -> tuple[float, ...]:
+    """Evaluate only the matched HKLs through the fit's cached direct path."""
+    included = tuple(item for item in matched if item.included)
+    geometry = _build_peak_geometry(config, included)
+    return tuple(_model_intensities_at_y(geometry, included, y))
+
+
+def evaluate_reference_fit_model_intensities(
+    config: SimulationConfig,
+    matched: Sequence[MatchedObservation],
+    y: float,
+) -> tuple[float, ...]:
+    """Evaluate matched HKLs through the shared single-reflection reference path."""
+    validate_y(y)
+    values: list[float] = []
+    for item in matched:
+        if not item.included:
+            continue
+        obs = item.observation
+        line_index = int(item.line_id.rsplit("_", maxsplit=1)[1])
+        line = config.lines[line_index]
+        reflection = calculate_reflection_for_hkl(
+            h=abs(obs.h),
+            k=abs(obs.k),
+            l=abs(obs.l),
             lattice=config.lattice,
-            y=y_value,
+            y=y,
             wavelength_a=line.wavelength_a,
             two_theta_min=config.two_theta_min,
             two_theta_max=config.two_theta_max,
-            hkl_max=config.hkl_max,
             scattering_mode=config.scattering_mode,
             composition=config.composition,
             include_lorentz_polarization=config.include_lorentz_polarization,
             include_multiplicity=config.include_multiplicity,
             include_cell_volume=config.include_cell_volume,
-            min_scaled_intensity=0.0,
         )
-        intensity_map: dict[tuple[int, int, int], float] = {}
-        for reflection in reflections:
-            # Same contract as calculate_simulation: model intensity × line weight.
-            intensity_map[(reflection.h, reflection.k, reflection.l)] = (
-                reflection.intensity_model * line.weight
-            )
-        by_line[line_id] = intensity_map
-
-    values: list[float] = []
-    for item in included:
-        obs = item.observation
-        line_map = by_line.get(item.line_id, {})
-        key = (abs(obs.h), abs(obs.k), abs(obs.l))
-        values.append(float(line_map.get(key, 0.0)))
-    return values
+        if reflection is None:
+            raise ValueError("matched HKL is outside the active model window")
+        values.append(reflection.intensity_model * line.weight)
+    return tuple(values)
 
 
 def _closed_form_scale_and_chi2(
@@ -549,7 +727,7 @@ def _closed_form_scale_and_chi2(
 
 def _local_minimum_candidates(
     grid_scan: Sequence[GridScanPoint],
-    max_count: int,
+    max_count: int | None,
 ) -> list[LocalMinimumCandidate]:
     if not grid_scan:
         return []
@@ -573,7 +751,158 @@ def _local_minimum_candidates(
                 )
             )
     candidates.sort(key=lambda item: item.chi2)
-    return candidates[:max_count]
+    return candidates if max_count is None else candidates[:max_count]
+
+
+def _attach_candidate_refinement(
+    candidate: LocalMinimumCandidate,
+    refinements: dict[int, _CandidateRefinement],
+) -> LocalMinimumCandidate:
+    refinement = refinements.get(candidate.grid_index)
+    if refinement is None:
+        return candidate
+    return replace(
+        candidate,
+        refined_y=refinement.y,
+        refined_scale_s=refinement.scale_s,
+        refined_chi2=refinement.chi2,
+        refine_status=refinement.status,
+    )
+
+
+def _refine_grid_candidate(
+    objective: Callable[[float], tuple[float, float, float]],
+    y_grid: Sequence[float],
+    grid_index: int,
+    options: FitOptions,
+) -> tuple[float, float, float, list[RefineTracePoint]]:
+    bracket = _refinement_bracket(y_grid, grid_index, options)
+    return _brent_minimize(
+        objective,
+        bracket[0],
+        bracket[1],
+        xtol=options.refine_xtol,
+        max_iter=options.refine_max_iter,
+    )
+
+
+def _candidate_chi2(candidate: LocalMinimumCandidate) -> float:
+    return candidate.refined_chi2 if candidate.refined_chi2 is not None else candidate.chi2
+
+
+def _candidate_y(candidate: LocalMinimumCandidate) -> float:
+    return candidate.refined_y if candidate.refined_y is not None else candidate.y
+
+
+def _profile_identifiability(
+    grid_scan: Sequence[GridScanPoint],
+    best: BestFit,
+    local_minima: Sequence[LocalMinimumCandidate],
+    options: FitOptions,
+) -> FitIdentifiability:
+    samples: list[tuple[float, float]] = [
+        (point.y, point.chi2) for point in grid_scan if math.isfinite(point.chi2)
+    ]
+    samples.extend(
+        (candidate.refined_y, candidate.refined_chi2)
+        for candidate in local_minima
+        if candidate.refined_y is not None
+        and candidate.refined_chi2 is not None
+        and math.isfinite(candidate.refined_chi2)
+    )
+    samples.append((best.y, best.chi2))
+    samples.sort(key=lambda item: item[0])
+
+    unique_samples: list[tuple[float, float]] = []
+    for y_value, chi2 in samples:
+        if not math.isfinite(y_value) or not math.isfinite(chi2):
+            continue
+        if unique_samples and math.isclose(unique_samples[-1][0], y_value, abs_tol=1e-14):
+            if chi2 < unique_samples[-1][1]:
+                unique_samples[-1] = (y_value, chi2)
+        else:
+            unique_samples.append((y_value, chi2))
+
+    if not unique_samples or not math.isfinite(best.chi2):
+        return FitIdentifiability(
+            method="profile_delta_chi2",
+            delta_chi2_threshold=options.profile_delta_chi2,
+            y_lower=None,
+            y_upper=None,
+            status="not_available",
+            reasons=("non_finite_profile",),
+            near_best_candidate_count=0,
+        )
+
+    threshold = best.chi2 + options.profile_delta_chi2
+    best_index = min(
+        range(len(unique_samples)),
+        key=lambda index: abs(unique_samples[index][0] - best.y),
+    )
+    passing = [chi2 <= threshold for _, chi2 in unique_samples]
+    left_index = best_index
+    while left_index > 0 and passing[left_index - 1]:
+        left_index -= 1
+    right_index = best_index
+    while right_index + 1 < len(unique_samples) and passing[right_index + 1]:
+        right_index += 1
+
+    def crossing(outside_index: int, inside_index: int) -> float:
+        outside_y, outside_chi2 = unique_samples[outside_index]
+        inside_y, inside_chi2 = unique_samples[inside_index]
+        denominator = outside_chi2 - inside_chi2
+        if math.isclose(denominator, 0.0, abs_tol=1e-15):
+            return inside_y
+        fraction = (threshold - inside_chi2) / denominator
+        fraction = min(max(fraction, 0.0), 1.0)
+        return inside_y + fraction * (outside_y - inside_y)
+
+    y_lower = (
+        unique_samples[0][0]
+        if left_index == 0
+        else crossing(left_index - 1, left_index)
+    )
+    y_upper = (
+        unique_samples[-1][0]
+        if right_index == len(unique_samples) - 1
+        else crossing(right_index + 1, right_index)
+    )
+
+    grid_step = abs(options.y_stop - options.y_start) / max(options.grid_points - 1, 1)
+    near_best = [
+        candidate
+        for candidate in local_minima
+        if _candidate_chi2(candidate) <= threshold
+        and abs(_candidate_y(candidate) - best.y) > max(1.5 * grid_step, 1e-12)
+    ]
+    near_best_candidate_count = len(near_best) + 1
+    reasons: list[str] = []
+    if left_index == 0:
+        reasons.append("lower_bound_reached")
+    if right_index == len(unique_samples) - 1:
+        reasons.append("upper_bound_reached")
+    if near_best:
+        reasons.append("multiple_near_best_candidates")
+    if all(passing):
+        reasons.append("profile_flat_over_scan")
+
+    if all(passing):
+        status = "flat"
+    elif near_best:
+        status = "multi_modal"
+    elif left_index == 0 or right_index == len(unique_samples) - 1:
+        status = "boundary_limited"
+    else:
+        status = "identified"
+    return FitIdentifiability(
+        method="profile_delta_chi2",
+        delta_chi2_threshold=options.profile_delta_chi2,
+        y_lower=y_lower,
+        y_upper=y_upper,
+        status=status,
+        reasons=tuple(reasons),
+        near_best_candidate_count=near_best_candidate_count,
+    )
 
 
 def _refinement_bracket(
@@ -687,19 +1016,19 @@ def _brent_minimize(
 
 
 def _residuals_at_best(
-    config: SimulationConfig,
+    geometry: dict[tuple[str, int, int, int], _PeakGeometry],
     matched: Sequence[MatchedObservation],
     y_best: float,
     scale_s: float,
 ) -> list[ResidualAtBest]:
     included = [item for item in matched if item.included]
-    i_model_included = _model_intensities_at_y(config, included, y_best) if included else []
+    i_model_included = _model_intensities_at_y(geometry, included, y_best) if included else []
     model_by_series = {
         item.series_id: value for item, value in zip(included, i_model_included, strict=True)
     }
     # Evaluate model intensities for excluded rows as well (audit table).
     excluded = [item for item in matched if not item.included]
-    i_model_excluded = _model_intensities_at_y(config, excluded, y_best) if excluded else []
+    i_model_excluded = _model_intensities_at_y(geometry, excluded, y_best) if excluded else []
     for item, value in zip(excluded, i_model_excluded, strict=True):
         model_by_series[item.series_id] = value
 

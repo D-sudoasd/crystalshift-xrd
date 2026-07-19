@@ -32,7 +32,7 @@ _Avoid_: fit parameter transformation, recalculated sweep
 ### Forward intensity
 
 **Model peak intensity**:
-Theoretical peak weight `I_model_peak = F² × applied_multiplicity × applied_LP × applied_volume × line_weight` for one radiation line and HKL.
+Theoretical peak weight `I_model_peak = F² × applied_multiplicity × applied_LP × applied_volume_factor × line_weight` for one radiation line and HKL. When enabled, `applied_volume_factor = 1 / V_cell`.
 _Avoid_: measured intensity, absolute intensity, calibrated intensity, Rietveld intensity
 
 **Relative intensity**:

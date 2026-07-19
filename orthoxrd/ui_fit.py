@@ -15,7 +15,13 @@ from orthoxrd.fit import (
     run_discrete_peak_fit,
     validate_discrete_peak_fit_observations,
 )
-from orthoxrd.fit_models import FitError, FitOptions, FitResult, ObservableMode
+from orthoxrd.fit_models import (
+    FitError,
+    FitOptions,
+    FitResult,
+    LocalMinimumCandidate,
+    ObservableMode,
+)
 from orthoxrd.fit_observations import (
     observation_csv_editor_template,
     observation_csv_template,
@@ -41,7 +47,9 @@ EXPORT_SIGNATURE_KEY = "fit_export_signature"
 OBS_TEXT_KEY = "fit_observations_text"
 OBS_UPLOAD_TOKEN_KEY = "fit_observations_upload_token"
 APPLY_FLASH_KEY = "fit_apply_flash"
+APPLY_FLASH_KIND_KEY = "fit_apply_flash_kind"
 APPLY_PENDING_Y_KEY = "fit_apply_pending_y"
+SELECTED_CANDIDATE_KEY = "fit_selected_candidate"
 # Resource bounds for observation CSV upload (bytes / data rows excluding header).
 MAX_OBS_UPLOAD_BYTES = 2 * 1024 * 1024
 MAX_OBS_UPLOAD_ROWS = 500
@@ -66,7 +74,11 @@ def render_fit_view(config: SimulationConfig) -> None:
 
     flash_y = st.session_state.pop(APPLY_FLASH_KEY, None)
     if flash_y is not None:
-        st.success(t("fit.apply_success", y=float(flash_y)))
+        flash_kind = st.session_state.pop(APPLY_FLASH_KIND_KEY, "best")
+        flash_key = (
+            "fit.apply_candidate_success" if flash_kind == "candidate" else "fit.apply_success"
+        )
+        st.success(t(flash_key, y=float(flash_y)))
 
     _render_fixed_model_context(config)
     observable_mode = _render_observable_mode()
@@ -118,7 +130,8 @@ def render_fit_view(config: SimulationConfig) -> None:
             st.warning(warning)
 
     _render_diagnostics(result)
-    _render_local_minima(result)
+    _render_identifiability(result)
+    _render_local_minima(result, stale)
     _render_residuals(result)
     _render_apply(result, stale)
     _render_export(result, signature, stale)
@@ -428,7 +441,39 @@ def _render_diagnostics(result: FitResult) -> None:
         )
 
 
-def _render_local_minima(result: FitResult) -> None:
+def _render_identifiability(result: FitResult) -> None:
+    st.markdown(t("fit.identifiability.header"))
+    diagnostic = result.identifiability
+    if diagnostic is None:
+        st.info(t("fit.identifiability.unavailable"))
+        return
+    status_text = t(f"fit.identifiability.status.{diagnostic.status}")
+    interval = (
+        f"[{diagnostic.y_lower:.6f}, {diagnostic.y_upper:.6f}]"
+        if diagnostic.y_lower is not None and diagnostic.y_upper is not None
+        else t("fit.identifiability.no_interval")
+    )
+    left, right = st.columns(2)
+    with left:
+        st.metric(t("fit.identifiability.status_label"), status_text)
+    with right:
+        st.metric(t("fit.identifiability.interval_label"), interval)
+    st.caption(
+        t(
+            "fit.identifiability.note",
+            threshold=diagnostic.delta_chi2_threshold,
+            reasons="; ".join(diagnostic.reasons) or t("fit.identifiability.no_reason"),
+        )
+    )
+    if diagnostic.status in {"multi_modal", "boundary_limited", "flat"}:
+        st.warning(t(f"fit.identifiability.warning.{diagnostic.status}"))
+    elif diagnostic.status == "identified":
+        st.success(t("fit.identifiability.identified"))
+    else:
+        st.info(t("fit.identifiability.unavailable"))
+
+
+def _render_local_minima(result: FitResult, stale: bool) -> None:
     st.markdown(t("fit.local_minima.header"))
     if not result.local_minima:
         st.caption(t("fit.local_minima.empty"))
@@ -439,10 +484,54 @@ def _render_local_minima(result: FitResult) -> None:
             "y": item.y,
             "scale_s": item.scale_s,
             "chi2": item.chi2,
+            "refined_y": item.refined_y,
+            "refined_scale_s": item.refined_scale_s,
+            "refined_chi2": item.refined_chi2,
+            "delta_chi2": _candidate_delta_chi2(result, item),
+            "refine_status": item.refine_status,
         }
         for item in result.local_minima
     ]
     st.dataframe(rows, width="stretch", hide_index=True, height=220)
+    candidate_indices = [item.grid_index for item in result.local_minima]
+    selected_index = st.selectbox(
+        t("fit.local_minima.select"),
+        options=candidate_indices,
+        format_func=lambda index: _candidate_label(result, index),
+        key=SELECTED_CANDIDATE_KEY,
+        help=t("fit.local_minima.select_help"),
+    )
+    selected = next(
+        item for item in result.local_minima if item.grid_index == selected_index
+    )
+    if st.button(
+        t("fit.apply_candidate"),
+        disabled=stale,
+        key="apply_selected_fit_candidate",
+        use_container_width=True,
+        help=t("fit.apply_candidate_help"),
+    ):
+        _queue_structure_apply(_candidate_y(selected), "candidate")
+
+
+def _candidate_label(result: FitResult, grid_index: int) -> str:
+    candidate = next(item for item in result.local_minima if item.grid_index == grid_index)
+    return (
+        f"grid {candidate.grid_index}: y={_candidate_y(candidate):.6f}, "
+        f"Δχ²={_candidate_delta_chi2(result, candidate):.6g}"
+    )
+
+
+def _candidate_delta_chi2(
+    result: FitResult,
+    candidate: LocalMinimumCandidate,
+) -> float:
+    chi2 = candidate.refined_chi2 if candidate.refined_chi2 is not None else candidate.chi2
+    return chi2 - result.best.chi2
+
+
+def _candidate_y(candidate: LocalMinimumCandidate) -> float:
+    return candidate.refined_y if candidate.refined_y is not None else candidate.y
 
 
 def _render_residuals(result: FitResult) -> None:
@@ -476,12 +565,16 @@ def _render_apply(result: FitResult, stale: bool) -> None:
         use_container_width=True,
         help=th("fit.apply"),
     ):
-        y_star = float(result.best.y)
-        # Defer structure widget writes to the next run (see consume_pending_structure_apply).
-        st.session_state[APPLY_PENDING_Y_KEY] = y_star
-        st.session_state[APPLY_FLASH_KEY] = y_star
-        st.rerun()
+        _queue_structure_apply(float(result.best.y), "best")
     st.caption(t("fit.apply_caption"))
+
+
+def _queue_structure_apply(y_value: float, kind: str) -> None:
+    """Defer structure widget writes to the next Streamlit run."""
+    st.session_state[APPLY_PENDING_Y_KEY] = float(y_value)
+    st.session_state[APPLY_FLASH_KEY] = float(y_value)
+    st.session_state[APPLY_FLASH_KIND_KEY] = kind
+    st.rerun()
 
 
 def _render_export(result: FitResult, signature: str, stale: bool) -> None:
@@ -573,6 +666,7 @@ def _fit_signature(
         "y_start": options.y_start,
         "y_stop": options.y_stop,
         "grid_points": options.grid_points,
+        "profile_delta_chi2": options.profile_delta_chi2,
         "observations_sha256": hashlib.sha256(
             observations_text.encode("utf-8")
         ).hexdigest(),

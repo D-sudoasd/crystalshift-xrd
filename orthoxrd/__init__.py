@@ -3,7 +3,7 @@ from orthoxrd.models import ElementFraction, LatticeParameters, RadiationLine, R
 from orthoxrd.powder import calculate_reflections, energy_kev_to_wavelength_a
 from orthoxrd.profiles import calculate_spectrum
 
-__version__ = "2.2.0"
+__version__ = "2.3.0"
 
 __all__ = [
     "ElementFraction",

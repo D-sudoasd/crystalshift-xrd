@@ -63,6 +63,127 @@ def _form_factor(
     return effective_form_factor(composition, s_a_inv)
 
 
+def calculate_model_peak_intensity(
+    structure_factor_squared: float,
+    *,
+    applied_multiplicity: float,
+    applied_lorentz_polarization: float,
+    applied_volume_factor: float,
+    line_weight: float = 1.0,
+) -> float:
+    """Apply the shared model peak-intensity factor contract."""
+    return max(
+        structure_factor_squared
+        * applied_multiplicity
+        * applied_lorentz_polarization
+        * applied_volume_factor
+        * line_weight,
+        0.0,
+    )
+
+
+def _calculate_reflection_for_hkl(
+    *,
+    h: int,
+    k: int,
+    l: int,
+    lattice: LatticeParameters,
+    y: float,
+    wavelength_a: float,
+    two_theta_min: float,
+    two_theta_max: float,
+    scattering_mode: ScatteringMode,
+    composition: Sequence[ElementFraction],
+    include_lorentz_polarization: bool,
+    include_multiplicity: bool,
+    include_cell_volume: bool,
+) -> Reflection | None:
+    if h == 0 and k == 0 and l == 0:
+        raise ValueError("000 is not a valid reflection")
+    d_spacing = d_spacing_orthorhombic(h, k, l, lattice)
+    two_theta = bragg_two_theta_deg(d_spacing, wavelength_a)
+    if two_theta is None or two_theta < two_theta_min or two_theta > two_theta_max:
+        return None
+    s_value = 1.0 / (2.0 * d_spacing)
+    form_factor = _form_factor(scattering_mode, composition, s_value)
+    structure_factor = cmcm_4c_structure_factor(h, k, l, y, form_factor)
+    structure_factor_squared = float((structure_factor * structure_factor.conjugate()).real)
+    if abs(structure_factor_squared) < 1e-12:
+        structure_factor_squared = 0.0
+    multiplicity = multiplicity_orthorhombic(h, k, l)
+    lp_factor = lorentz_polarization_factor(two_theta)
+    applied_multiplicity = float(multiplicity) if include_multiplicity else 1.0
+    applied_lp = lp_factor if include_lorentz_polarization else 1.0
+    applied_volume_factor = 1.0 / lattice.volume_a3 if include_cell_volume else 1.0
+    intensity = calculate_model_peak_intensity(
+        structure_factor_squared,
+        applied_multiplicity=applied_multiplicity,
+        applied_lorentz_polarization=applied_lp,
+        applied_volume_factor=applied_volume_factor,
+    )
+    return Reflection(
+        h=h,
+        k=k,
+        l=l,
+        d_spacing_a=d_spacing,
+        two_theta_deg=two_theta,
+        q_a_inv=2.0 * math.pi / d_spacing,
+        multiplicity=multiplicity,
+        structure_factor_squared=structure_factor_squared,
+        lorentz_polarization=lp_factor,
+        intensity_raw=intensity,
+        intensity_scaled=0.0,
+        form_factor_effective=form_factor,
+        structure_factor_real=float(structure_factor.real),
+        structure_factor_imag=float(structure_factor.imag),
+        applied_multiplicity=applied_multiplicity,
+        applied_lorentz_polarization=applied_lp,
+        applied_volume_factor=applied_volume_factor,
+        cell_volume_a3=lattice.volume_a3,
+    )
+
+
+def calculate_reflection_for_hkl(
+    *,
+    h: int,
+    k: int,
+    l: int,
+    lattice: LatticeParameters,
+    y: float,
+    wavelength_a: float,
+    two_theta_min: float,
+    two_theta_max: float,
+    scattering_mode: ScatteringMode = "composition",
+    composition: Sequence[ElementFraction] = (),
+    include_lorentz_polarization: bool = True,
+    include_multiplicity: bool = True,
+    include_cell_volume: bool = True,
+) -> Reflection | None:
+    """Calculate one unscaled reflection using the forward-model contract."""
+    validate_y(y)
+    if wavelength_a <= 0:
+        raise ValueError("wavelength must be positive")
+    if two_theta_min < 0 or two_theta_max <= two_theta_min:
+        raise ValueError("two-theta range is invalid")
+    if h < 0 or k < 0 or l < 0:
+        raise ValueError("single-HKL calculation requires non-negative indices")
+    return _calculate_reflection_for_hkl(
+        h=h,
+        k=k,
+        l=l,
+        lattice=lattice,
+        y=y,
+        wavelength_a=wavelength_a,
+        two_theta_min=two_theta_min,
+        two_theta_max=two_theta_max,
+        scattering_mode=scattering_mode,
+        composition=composition,
+        include_lorentz_polarization=include_lorentz_polarization,
+        include_multiplicity=include_multiplicity,
+        include_cell_volume=include_cell_volume,
+    )
+
+
 def calculate_reflections(
     *,
     lattice: LatticeParameters,
@@ -92,49 +213,23 @@ def calculate_reflections(
             for l in range(0, hkl_max + 1):
                 if h == 0 and k == 0 and l == 0:
                     continue
-                d_spacing = d_spacing_orthorhombic(h, k, l, lattice)
-                two_theta = bragg_two_theta_deg(d_spacing, wavelength_a)
-                if two_theta is None or two_theta < two_theta_min or two_theta > two_theta_max:
-                    continue
-                s_value = 1.0 / (2.0 * d_spacing)
-                form_factor = _form_factor(scattering_mode, composition, s_value)
-                structure_factor = cmcm_4c_structure_factor(h, k, l, y, form_factor)
-                structure_factor_squared = float(
-                    (structure_factor * structure_factor.conjugate()).real
+                reflection = _calculate_reflection_for_hkl(
+                    h=h,
+                    k=k,
+                    l=l,
+                    lattice=lattice,
+                    y=y,
+                    wavelength_a=wavelength_a,
+                    two_theta_min=two_theta_min,
+                    two_theta_max=two_theta_max,
+                    scattering_mode=scattering_mode,
+                    composition=composition,
+                    include_lorentz_polarization=include_lorentz_polarization,
+                    include_multiplicity=include_multiplicity,
+                    include_cell_volume=include_cell_volume,
                 )
-                if abs(structure_factor_squared) < 1e-12:
-                    structure_factor_squared = 0.0
-                multiplicity = multiplicity_orthorhombic(h, k, l)
-                lp_factor = lorentz_polarization_factor(two_theta)
-                applied_multiplicity = float(multiplicity) if include_multiplicity else 1.0
-                applied_lp = lp_factor if include_lorentz_polarization else 1.0
-                applied_volume = 1.0 / lattice.volume_a3 if include_cell_volume else 1.0
-                intensity = max(
-                    structure_factor_squared * applied_multiplicity * applied_lp * applied_volume,
-                    0.0,
-                )
-                rows.append(
-                    Reflection(
-                        h=h,
-                        k=k,
-                        l=l,
-                        d_spacing_a=d_spacing,
-                        two_theta_deg=two_theta,
-                        q_a_inv=2.0 * math.pi / d_spacing,
-                        multiplicity=multiplicity,
-                        structure_factor_squared=structure_factor_squared,
-                        lorentz_polarization=lp_factor,
-                        intensity_raw=intensity,
-                        intensity_scaled=0.0,
-                        form_factor_effective=form_factor,
-                        structure_factor_real=float(structure_factor.real),
-                        structure_factor_imag=float(structure_factor.imag),
-                        applied_multiplicity=applied_multiplicity,
-                        applied_lorentz_polarization=applied_lp,
-                        applied_volume_factor=applied_volume,
-                        cell_volume_a3=lattice.volume_a3,
-                    )
-                )
+                if reflection is not None:
+                    rows.append(reflection)
 
     maximum = max((row.intensity_raw for row in rows), default=0.0)
     reflections: list[Reflection] = []

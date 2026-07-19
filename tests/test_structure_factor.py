@@ -5,11 +5,34 @@ import pytest
 from orthoxrd.models import LatticeParameters
 from orthoxrd.powder import calculate_reflections
 from orthoxrd.structure_factor import (
+    analytic_unit_structure_factor_squared,
+    cmcm_4c_structure_factor,
     cmcm_4c_structure_factor_squared,
     signed_shuffle_from_y,
     validate_y,
     y_from_shuffle_magnitude,
 )
+
+
+@pytest.mark.parametrize("y", [0.0, 0.125, 0.25, 0.333, 0.5])
+@pytest.mark.parametrize("hkl", [(0, 0, 1), (0, 2, 0), (0, 2, 1), (1, 3, 1), (4, 2, 3)])
+def test_analytic_unit_f2_matches_numerical_structure_factor(
+    y: float,
+    hkl: tuple[int, int, int],
+) -> None:
+    h, k, l = hkl
+    numerical = cmcm_4c_structure_factor(h, k, l, y, 1.0)
+    expected = float((numerical * numerical.conjugate()).real)
+    assert analytic_unit_structure_factor_squared(h, k, l, y) == pytest.approx(
+        expected,
+        abs=1e-12,
+    )
+
+
+def test_analytic_unit_f2_special_position_and_extinction_are_explicit() -> None:
+    assert analytic_unit_structure_factor_squared(0, 2, 0, 0.25) == pytest.approx(16.0)
+    assert analytic_unit_structure_factor_squared(0, 2, 1, 0.25) == pytest.approx(0.0)
+    assert analytic_unit_structure_factor_squared(1, 0, 0, 0.25) == pytest.approx(0.0)
 
 
 @pytest.mark.parametrize(

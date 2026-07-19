@@ -12,6 +12,6 @@ def test_package_and_export_versions_are_aligned() -> None:
         (Path(__file__).parents[1] / "pyproject.toml").read_text(encoding="utf-8")
     )
 
-    assert __version__ == "2.2.0"
+    assert __version__ == "2.3.0"
     assert pyproject["project"]["version"] == __version__
-    assert EXPORT_SCHEMA_VERSION == "2.2"
+    assert EXPORT_SCHEMA_VERSION == "2.3"
