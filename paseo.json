@@ -1,0 +1,41 @@
+{
+  "worktree": {
+    "setup": [
+      "python -m pip install -e \".[dev]\"",
+      "cd frontend && bun install"
+    ]
+  },
+  "scripts": {
+    "test": {
+      "command": "python -m pytest -q"
+    },
+    "lint": {
+      "command": "python -m ruff check ."
+    },
+    "typecheck": {
+      "command": "python -m basedpyright"
+    },
+    "check": {
+      "command": "python -m pytest -q && python -m ruff check . && python -m basedpyright && python -m compileall -q orthoxrd tests app.py"
+    },
+    "frontend": {
+      "command": "cd frontend && bun test && bun run typecheck && bun run build"
+    },
+    "app": {
+      "type": "service",
+      "command": "python -m streamlit run app.py --server.port $PASEO_PORT --server.address 127.0.0.1",
+      "port": 8501
+    }
+  },
+  "metadataGeneration": {
+    "branchName": {
+      "instructions": "Use prefixes feat/, fix/, docs/, refactor/, test/, or chore/. Personal or exploratory branches use mb/. Examples: feat/export-excel-v2, fix/fit-weight-default, docs/contributing-checks, mb/explore-live-canvas. Prefer short kebab-case after the prefix. Do not use spaces."
+    },
+    "commitMessage": {
+      "instructions": "Follow Conventional Commits with a scope: type(scope): summary. Types: feat, fix, docs, refactor, test, chore. Scopes often: fit, export, live, ui, powder, structure, batch, sweep. Keep the subject concise; body may note scientific impact on y, shuffle, intensity model, or export schema. Do not commit __pycache__, local exports, Playwright sessions, or QA screenshots."
+    },
+    "pullRequest": {
+      "instructions": "Start with a short summary of what changed and why. Then include a Test plan section. Test plan must cover: python -m pytest -q; python -m ruff check .; and if frontend/Live Canvas changed: cd frontend && bun test && bun run typecheck && bun run build. For scientific changes, note which regression tests cover units, boundaries, normalisation, or physical invariants. Never describe calculated model peak intensity as experimental absolute intensity."
+    }
+  }
+}
