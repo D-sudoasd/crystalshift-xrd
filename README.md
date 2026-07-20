@@ -6,7 +6,7 @@
 
 **How lattice, Wyckoff `y`, basal shuffle, and energy move powder peaks and F².**
 
-Streamlit workbench for theoretical powder XRD of orthorhombic **`Cmcm 4c`**. Version `2.3.0` · export schema `2.3`.
+Streamlit workbench for theoretical powder XRD of orthorhombic **`Cmcm 4c`**. Version `2.3.0` · export schema `2.4`.
 
 > Theoretical model only — not Rietveld, not absolute intensity calibration.
 
@@ -18,7 +18,9 @@ Streamlit workbench for theoretical powder XRD of orthorhombic **`Cmcm 4c`**. Ve
 (0, y, 1/4), (0, -y, 3/4),
 (1/2, 1/2+y, 1/4), (1/2, 1/2-y, 3/4)
 
-shuffle_signed = 2*(y-0.25)
+shuffle_signed     = 2*(y-0.25)
+shuffle_magnitude  = |shuffle_signed|
+normalized_shuffle = shuffle_magnitude / 0.5   # in [0, 1]
 wavelength_A   = 12.398419843320026 / energy_keV
 I_model_peak   = F² × applied_multiplicity × applied_LP × applied_volume_factor × line_weight
 applied_volume_factor = 1 / V_cell when the cell-volume correction is enabled; otherwise 1
@@ -45,7 +47,7 @@ Open http://localhost:8508/
 - **Live evolution** — exact precomputed frames; browser switches locally  
 - **F² evolution** + structure preview along `b`  
 - **Sweep / trajectory** CSV · **discrete-peak fit** diagnostics  
-- Schema 2.3 ZIP + `analysis.xlsx` with hashes and checksums
+- Schema 2.4 ZIP + `analysis.xlsx` with hashes and checksums
 
 Does **not** implement Rietveld/Le Bail/Pawley, texture, absorption, size/strain, zero shift, background, phase fractions, or absolute calibration.
 

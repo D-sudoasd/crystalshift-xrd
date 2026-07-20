@@ -160,6 +160,9 @@ def test_noise_free_round_trip_recovers_y_and_s() -> None:
     assert result.best.chi2 == pytest.approx(0.0, abs=1e-6)
     assert result.best.shuffle_signed == pytest.approx(2.0 * (result.best.y - 0.25))
     assert result.best.shuffle_magnitude == pytest.approx(abs(result.best.shuffle_signed))
+    assert result.best.normalized_shuffle == pytest.approx(
+        result.best.shuffle_magnitude / 0.5
+    )
     assert len(result.grid_scan) == 251
     assert result.refine_trace  # refinement ran
     assert all(item.included for item in result.matched)
@@ -464,12 +467,14 @@ def test_profile_delta_chi2_threshold_must_be_finite_and_positive(value: float) 
 
 
 def _best_fit(y: float, chi2: float) -> BestFit:
+    magnitude = abs(2.0 * (y - 0.25))
     return BestFit(
         y=y,
         scale_s=1.0,
         chi2=chi2,
         shuffle_signed=2.0 * (y - 0.25),
-        shuffle_magnitude=abs(2.0 * (y - 0.25)),
+        shuffle_magnitude=magnitude,
+        normalized_shuffle=magnitude / 0.5,
         source="grid",
     )
 

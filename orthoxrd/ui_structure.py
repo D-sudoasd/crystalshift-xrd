@@ -15,7 +15,11 @@ from orthoxrd.i18n import t, th
 from orthoxrd.models import LatticeParameters
 from orthoxrd.presets import LATTICE_PRESETS
 from orthoxrd.structure_coordinates import StructureBranch, structure_branch_from_y
-from orthoxrd.structure_factor import signed_shuffle_from_y, y_from_shuffle_magnitude
+from orthoxrd.structure_factor import (
+    normalized_shuffle_from_y,
+    signed_shuffle_from_y,
+    y_from_shuffle_magnitude,
+)
 from orthoxrd.structure_state import StructureState
 
 PRESET_KEY = "structure_preset"
@@ -182,6 +186,7 @@ def _render_shuffle_inputs() -> float:
         )
     with signed_col:
         signed_shuffle = signed_shuffle_from_y(float(y_value))
+        normalized = normalized_shuffle_from_y(float(y_value))
         branch = structure_branch_from_y(float(y_value))
         branch_label = (
             t("structure.branch.reference")
@@ -195,6 +200,11 @@ def _render_shuffle_inputs() -> float:
                 <div class="xrd-readout-value">{value}</div>
                 <div class="xrd-readout-meta">{meta}</div>
             </div>
+            <div class="xrd-readout-card" style="margin-top:0.5rem;">
+                <div class="xrd-readout-label">{norm_label}</div>
+                <div class="xrd-readout-value">{norm_value}</div>
+                <div class="xrd-readout-meta">{norm_meta}</div>
+            </div>
             """.format(
                 label=t("structure.signed_label"),
                 value=f"{signed_shuffle:+.4f}",
@@ -202,6 +212,9 @@ def _render_shuffle_inputs() -> float:
                     "structure.signed_meta",
                     branch=branch_label,
                 ),
+                norm_label=t("structure.normalized_label"),
+                norm_value=f"{normalized:.4f}",
+                norm_meta=t("structure.normalized_meta"),
             ),
             unsafe_allow_html=True,
         )
@@ -234,6 +247,7 @@ def _render_range_note() -> None:
                 smax=SHUFFLE_MAGNITUDE_MAX,
             )
         )
+        st.caption(t("structure.range_normalized"))
         st.caption(
             t(
                 "structure.range_tinb",

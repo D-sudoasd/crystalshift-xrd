@@ -53,7 +53,7 @@ from orthoxrd.structure_coordinates import (
     StructureBranch,
     structure_branch_from_y,
 )
-from orthoxrd.structure_factor import signed_shuffle_from_y
+from orthoxrd.structure_factor import normalized_shuffle_from_y, signed_shuffle_from_y
 
 _TEXT_COLUMNS = frozenset(
     {
@@ -104,6 +104,7 @@ _COLUMN_DESCRIPTIONS = {
     "y": "Canonical Cmcm 4c Wyckoff fractional coordinate.",
     "shuffle_signed": "Signed basal shuffle, 2*(y-0.25).",
     "shuffle_magnitude": "Basal-shuffle magnitude, abs(shuffle_signed).",
+    "normalized_shuffle": "Normalized basal-shuffle magnitude |s|/0.5, range [0,1].",
     "branch": "Shuffle-magnitude branch: lower, upper, or zero-shuffle reference.",
     "a_A": "Orthorhombic lattice parameter a.",
     "b_A": "Orthorhombic lattice parameter b.",
@@ -309,6 +310,14 @@ def build_f2_excel_workbook(
                 abs(active_signed),
                 "Derived absolute shuffle magnitude.",
                 "fractional",
+                "derived",
+            ),
+            _parameter(
+                "Active structure",
+                "active_normalized_shuffle",
+                normalized_shuffle_from_y(active_y),
+                "Normalized basal-shuffle magnitude |s|/0.5, range [0,1].",
+                "1",
                 "derived",
             ),
             _parameter(
@@ -524,6 +533,8 @@ def _column_unit(field: str) -> str:
         return "angstrom"
     if field in {"y", "refined_y", "shuffle_signed", "shuffle_magnitude"}:
         return "fractional"
+    if field == "normalized_shuffle":
+        return "1"
     if "rel_" in field or field.endswith("_pct"):
         return "percent"
     if "intensity" in field.casefold() or field in {"F2", "F_abs", "chi2"}:
@@ -591,6 +602,14 @@ def _simulation_parameters(config: SimulationConfig) -> tuple[ExcelParameterSpec
             abs(signed),
             "Derived basal-shuffle magnitude; branch information is not discarded from y.",
             "fractional",
+            "derived",
+        ),
+        _parameter(
+            "Structure",
+            "normalized_shuffle",
+            normalized_shuffle_from_y(config.y),
+            "Normalized basal-shuffle magnitude |s|/0.5, range [0,1].",
+            "1",
             "derived",
         ),
         _parameter(
@@ -840,6 +859,14 @@ def _fit_parameters(result: FitResult) -> tuple[ExcelParameterSpec, ...]:
             best.shuffle_magnitude,
             "Basal-shuffle magnitude derived from best_y.",
             role="result",
+        ),
+        _parameter(
+            "Fit result",
+            "best_normalized_shuffle",
+            best.normalized_shuffle,
+            "Normalized basal-shuffle magnitude |s|/0.5, range [0,1].",
+            "1",
+            "result",
         ),
         _parameter(
             "Fit result",

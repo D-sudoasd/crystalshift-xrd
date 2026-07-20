@@ -13,7 +13,10 @@ from orthoxrd.structure_coordinates import (
     structure_coordinate_from_y,
     y_from_structure_coordinate,
 )
-from orthoxrd.structure_factor import analytic_unit_structure_factor_squared
+from orthoxrd.structure_factor import (
+    analytic_unit_structure_factor_squared,
+    normalized_shuffle_from_y,
+)
 from orthoxrd.ui_plot_theme import SERIES, plot_layout
 
 
@@ -81,6 +84,7 @@ def plot_f2_evolution(
                     "y": canonical_y,
                     "shuffle_signed": signed,
                     "shuffle_magnitude": abs(signed),
+                    "normalized_shuffle": normalized_shuffle_from_y(canonical_y),
                     "branch": row_branch if row_branch is not None else "reference",
                 }
             )

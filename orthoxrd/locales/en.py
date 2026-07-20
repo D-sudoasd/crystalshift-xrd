@@ -19,7 +19,7 @@ EN_TEXT: dict[str, str] = {
     "common.on": "on",
     "common.off": "off",
     "app.page_title": "CrystalShift XRD",
-    "app.model_tag": "Cmcm 4c | schema 2.3",
+    "app.model_tag": "Cmcm 4c | schema 2.4",
     "app.subtitle": (
         "Kinematic powder model for lattice, Wyckoff-y, shuffle, and incident-radiation studies."
     ),
@@ -29,6 +29,7 @@ EN_TEXT: dict[str, str] = {
     "app.summary.c": "c (A)",
     "app.summary.y": "Wyckoff y",
     "app.summary.shuffle": "shuffle |s|",
+    "app.summary.normalized_shuffle": "normalized shuffle",
     "app.summary.energy": "energy (keV)",
     "app.summary.lambda": "lambda (A)",
     "app.summary.hash": "config hash",
@@ -94,12 +95,15 @@ EN_TEXT: dict[str, str] = {
     "structure.branch": "Shuffle-magnitude branch",
     "structure.signed_label": "signed shuffle",
     "structure.signed_meta": "2(y - 0.25) · current {branch}",
+    "structure.normalized_label": "normalized shuffle",
+    "structure.normalized_meta": "|s| / 0.5 · range [0, 1]",
     "structure.branch.lower": "lower branch",
     "structure.branch.upper": "upper branch",
     "structure.branch.reference": "zero-shuffle reference",
     "structure.relation_note": (
         '<div class="xrd-note"><strong>y / shuffle relation</strong> '
-        "signed = 2(y - 0.25); magnitude = abs(signed). "
+        "signed = 2(y - 0.25); magnitude = abs(signed); "
+        "normalized = magnitude / 0.5. "
         "Ti-Nb lower branch: y={y_min:.3f}..{y_max:.3f}, "
         "magnitude=0..{s_max:.3f}.</div>"
     ),
@@ -111,6 +115,9 @@ EN_TEXT: dict[str, str] = {
     "structure.range_mag": (
         "shuffle_magnitude = abs(shuffle_signed), range: {smin:.3f} to {smax:.3f}"
     ),
+    "structure.range_normalized": (
+        "normalized_shuffle = shuffle_magnitude / 0.5, range: 0 to 1"
+    ),
     "structure.range_tinb": (
         "Default Ti-Nb lower-branch sweep: y={ymin:.3f}..{ymax:.3f}, "
         "shuffle_magnitude={smin:.3f}..{smax:.3f}"
@@ -121,7 +128,8 @@ EN_TEXT: dict[str, str] = {
     ),
     "structure.context.caption": (
         "Active structure: y={y:.6f} | signed shuffle={signed:+.6f} | "
-        "shuffle magnitude={magnitude:.6f} | {branch}. "
+        "shuffle magnitude={magnitude:.6f} | normalized shuffle={normalized:.4f} | "
+        "{branch}. "
         "These coordinates modulate structure factors and model intensity; the physical "
         "Pattern/Peaks axis remains 2theta, q, or d."
     ),
@@ -283,7 +291,7 @@ EN_TEXT: dict[str, str] = {
         "the final frame when the slider is released."
     ),
     "live.export.prepare": "Prepare live evolution ZIP",
-    "live.export.spinner": "Building schema 2.3 live analysis package...",
+    "live.export.spinner": "Building schema 2.4 live analysis package...",
     "live.export.caption_prepare": "Prepare the full-precision live ZIP on demand.",
     "live.export.caption_changed": "The live selection changed. Prepare the ZIP again.",
     "live.export.download": "Download live_evolution.zip",
@@ -335,8 +343,8 @@ EN_TEXT: dict[str, str] = {
         "Preview is limited to 500 peak rows. The ZIP contains the complete tables."
     ),
     "sweep.prepare": "Prepare sweep ZIP",
-    "sweep.spinner": "Streaming schema 2.3 files into ZIP...",
-    "sweep.prepare_caption": "Run the active configuration, then prepare the schema 2.3 ZIP.",
+    "sweep.spinner": "Streaming schema 2.4 files into ZIP...",
+    "sweep.prepare_caption": "Run the active configuration, then prepare the schema 2.4 ZIP.",
     "sweep.download": "Download sweep ZIP",
     "sweep.export_size": "{kib:.1f} KiB | SHA-256 {sha}...",
     "sweep.calc_spinner": "Calculating sweep...",
@@ -396,7 +404,7 @@ EN_TEXT: dict[str, str] = {
     "sweep.plot.intensity": "intensity",
     "export.prepare": "Prepare current ZIP",
     "export.spinner": "Preparing current simulation export...",
-    "export.caption": "Schema 2.3 export is prepared on demand.",
+    "export.caption": "Schema 2.4 export is prepared on demand.",
     "export.expired": "Prepared export expired. Prepare it again.",
     "export.download": "Download current ZIP",
     "export.size": "{kib:.1f} KiB | SHA-256 {sha}...",
@@ -486,6 +494,7 @@ EN_TEXT: dict[str, str] = {
     "fit.kpi.chi2_star": "χ²*",
     "fit.kpi.shuffle_signed": "shuffle signed",
     "fit.kpi.shuffle_mag": "shuffle |s|",
+    "fit.kpi.normalized_shuffle": "normalized shuffle",
     "fit.kpi.source": "source",
     "fit.kpi.peaks": "peaks used",
     "fit.kpi.mode": "observable",
@@ -601,6 +610,8 @@ Cmcm 4c site. The Wyckoff parameter controls the basal shuffle:
 **shuffle_signed = 2(y - 0.25)**
 
 **shuffle_magnitude = abs(shuffle_signed)**
+
+**normalized_shuffle = shuffle_magnitude / 0.5** (range [0, 1]; process metric only)
 
 Changing y changes the structure factor but does not change d-spacing.
 Changing a, b, or c changes d-spacing and the Bragg position.
@@ -938,7 +949,7 @@ EN_HELP: dict[str, str] = {
         "Export long-form F2 evolution.",
         "Post-processing with both the selected display axis and canonical y.",
         "f2_evolution.csv.",
-        "Columns include axis_value, hkl, F2, axis_code, y, signed/magnitude shuffle, and branch.",
+        "Columns include axis_value, hkl, F2, axis_code, y, signed/magnitude/normalized shuffle, and branch.",
     ),
     "f2.download_excel": _h(
         "Download the same F2 evolution rows as a native Excel workbook.",
@@ -971,7 +982,7 @@ EN_HELP: dict[str, str] = {
         "Prepare after choosing baseline and current frames.",
         "Re-prepare if the selection changes.",
     ),
-    "live.export.download": _h("Download live_evolution.zip.", "Offline analysis.", "Includes live_state.json.", "Schema 2.3."),
+    "live.export.download": _h("Download live_evolution.zip.", "Offline analysis.", "Includes live_state.json.", "Schema 2.4."),
     "sweep.spectrum_points": _h(
         "Spectrum samples per sweep step.",
         "Controls memory and ZIP size.",
@@ -1011,7 +1022,7 @@ EN_HELP: dict[str, str] = {
     "sweep.result_view": _h("Switch heatmap, waterfall, peak evolution, or data preview.", "Multiple views of one result.", "Heatmap first, then peak evolution.", "Display crop does not shrink exports."),
     "sweep.peak_metric": _h("Vertical metric for peak-evolution curves.", "F2, N x F2, R, and model intensity use different definitions.", "Choose the R convention according to whether experimental areas are LP-corrected.", "R is an unnormalized model reference factor, not instrument-calibrated absolute intensity."),
     "sweep.peak_series": _h("Track up to 12 peak series.", "Follow key HKLs across the sweep.", "Select 110/020 etc.", "Extinct peaks stay as zeros so curves do not break."),
-    "sweep.prepare": _h("Build the schema 2.3 sweep ZIP.", "Full reproducible package.", "Available when the result is fresh.", "Disabled while stale."),
+    "sweep.prepare": _h("Build the schema 2.4 sweep ZIP.", "Full reproducible package.", "Available when the result is fresh.", "Disabled while stale."),
     "sweep.download": _h("Download the prepared sweep ZIP.", "Origin/Python workflows.", "Includes matrices and checksums.", "English file names."),
     "sweep.display_range": _h("Crop only heatmap/waterfall display windows.", "ZIP still holds the full simulation window.", "Zoom a 2theta region.", "Bounds must be ordered."),
     "sweep.display_coordinate": _h(
@@ -1031,7 +1042,7 @@ EN_HELP: dict[str, str] = {
         "Prepare after the active model looks right.",
         "Config changes invalidate the previous package.",
     ),
-    "export.download": _h("Download current_simulation.zip.", "Archival and plotting.", "Includes Origin helpers.", "Schema 2.3."),
+    "export.download": _h("Download current_simulation.zip.", "Archival and plotting.", "Includes Origin helpers.", "Schema 2.4."),
     "fit.obs.upload": _h(
         "Upload a discrete peak observation CSV.",
         "Brings lab peak strengths into the inverse fit.",

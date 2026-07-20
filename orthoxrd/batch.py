@@ -24,7 +24,11 @@ from orthoxrd.powder import (
     energy_kev_to_wavelength_a,
 )
 from orthoxrd.profiles import calculate_spectrum_arrays
-from orthoxrd.structure_factor import signed_shuffle_from_y, y_from_shuffle_magnitude
+from orthoxrd.structure_factor import (
+    normalized_shuffle_from_y,
+    signed_shuffle_from_y,
+    y_from_shuffle_magnitude,
+)
 from orthoxrd.sweep_limits import MAX_PEAK_ROWS, validate_sweep_preflight
 from orthoxrd.trajectory import parse_trajectory_csv
 
@@ -134,6 +138,7 @@ def _range_step(config: SweepConfig, index: int, value: float) -> SweepStep:
         y=y_value,
         shuffle_signed=shuffle_signed,
         shuffle_magnitude=abs(shuffle_signed),
+        normalized_shuffle=normalized_shuffle_from_y(y_value),
         lines=lines,
     )
 

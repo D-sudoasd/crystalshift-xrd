@@ -271,7 +271,8 @@ Files
   weight used in chi2 (poisson/equal/override). Do not confuse weight names.
 - grid_scan.csv: y, S(y), chi2 for the scan grid.
 - refine_trace.csv: local-refinement evaluations (may be empty if refine is off).
-- best_fit.json / best_point.csv: y*, S*, chi2*, shuffle_signed, shuffle_magnitude.
+- best_fit.json / best_point.csv: y*, S*, chi2*, shuffle_signed, shuffle_magnitude,
+  normalized_shuffle.
 - residual_at_best.csv: per-peak residuals at the selected best point only
   (weight column is resolved_weight used in chi2).
 - local_minima.csv: neighbourhood minima on the grid chi2 curve.

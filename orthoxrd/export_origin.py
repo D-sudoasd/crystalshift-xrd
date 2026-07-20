@@ -158,6 +158,13 @@ def sweep_origin_rows(result: SweepResult) -> Iterable[Mapping[str, CsvValue]]:
         ("axis_value", "X", "Sweep coordinate", "", "Primary evolution coordinate"),
         ("y", "Y", "Wyckoff y", "", "4c fractional coordinate"),
         ("shuffle_magnitude", "Y", "Shuffle magnitude", "", "Unsigned basal shuffle"),
+        (
+            "normalized_shuffle",
+            "Y",
+            "Normalized shuffle",
+            "1",
+            "Basal-shuffle progress |s|/0.5 in [0,1]",
+        ),
         ("a_A", "Y", "Lattice a", "A", "Orthorhombic lattice parameter"),
         ("b_A", "Y", "Lattice b", "A", "Orthorhombic lattice parameter"),
         ("c_A", "Y", "Lattice c", "A", "Orthorhombic lattice parameter"),

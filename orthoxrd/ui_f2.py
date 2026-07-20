@@ -13,6 +13,7 @@ from orthoxrd.structure_coordinates import (
     structure_coordinate_from_y,
     y_from_structure_coordinate,
 )
+from orthoxrd.structure_factor import normalized_shuffle_from_y
 from orthoxrd.structure_geometry import build_cmcm_shuffle_geometry
 from orthoxrd.ui_plot_f2 import F2Axis, F2Branch, plot_f2_evolution
 from orthoxrd.ui_plot_structure import StructurePlotLabels, plot_cmcm_shuffle_structure
@@ -152,6 +153,7 @@ def _render_structure_preview(
     )
     signed = structure_coordinate_from_y(preview_y, "signed_shuffle")
     magnitude = abs(signed)
+    normalized = normalized_shuffle_from_y(preview_y)
     preview_branch = structure_branch_from_y(preview_y)
     branch_label = (
         t(f"branch.{preview_branch}") if preview_branch is not None else "y=0.25"
@@ -160,7 +162,8 @@ def _render_structure_preview(
     st.caption(
         f"y=0.25 → {t('live.ui.current')} y={preview_y:.6f} · "
         f"{t('axis.signed_shuffle')}={signed:+.6f} · "
-        f"{t('axis.shuffle_magnitude')}={magnitude:.6f} · {branch_label} | "
+        f"{t('axis.shuffle_magnitude')}={magnitude:.6f} · "
+        f"{t('app.summary.normalized_shuffle')}={normalized:.4f} · {branch_label} | "
         f"|Δb|=b·|y−0.25|={displacement_a:.6f} Å"
     )
     st.plotly_chart(

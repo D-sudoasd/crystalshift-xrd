@@ -74,11 +74,15 @@ def test_zip_export_contains_stable_files_and_manifest() -> None:
             "y",
             "shuffle_signed",
             "shuffle_magnitude",
+            "normalized_shuffle",
             "hkl",
             "two_theta_deg",
             "I_rel_local",
             "I_rel_global",
         } <= set(rows[0])
+        for row in rows:
+            magnitude = float(row["shuffle_magnitude"])
+            assert float(row["normalized_shuffle"]) == pytest.approx(magnitude / 0.5)
 
 
 def test_zip_export_keeps_peak_headers_when_no_reflections_are_in_range() -> None:

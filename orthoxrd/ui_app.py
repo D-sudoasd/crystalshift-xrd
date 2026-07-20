@@ -8,7 +8,7 @@ from orthoxrd.export_zip import prepare_current_export
 from orthoxrd.i18n import ensure_language_state, render_language_toggle, t, th
 from orthoxrd.scattering import composition_to_text
 from orthoxrd.simulation import SimulationResult
-from orthoxrd.structure_factor import signed_shuffle_from_y
+from orthoxrd.structure_factor import normalized_shuffle_from_y, signed_shuffle_from_y
 from orthoxrd.ui_config import build_simulation_config, calculate_cached
 from orthoxrd.ui_export import render_current_export
 from orthoxrd.ui_f2 import render_f2_view
@@ -133,6 +133,10 @@ def _render_active_configuration(
                 (t("app.summary.c"), f"{lattice.c:.5f}"),
                 (t("app.summary.y"), f"{structure.y:.6f}"),
                 (t("app.summary.shuffle"), f"{abs(signed):.6f}"),
+                (
+                    t("app.summary.normalized_shuffle"),
+                    f"{normalized_shuffle_from_y(structure.y):.4f}",
+                ),
                 (t("app.summary.energy"), f"{radiation.primary_energy_kev:.6g}"),
                 (t("app.summary.lambda"), f"{radiation.primary_wavelength_a:.7g}"),
                 (t("app.summary.hash"), digest[:12]),

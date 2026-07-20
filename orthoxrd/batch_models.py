@@ -137,6 +137,7 @@ class SweepStep:
     y: float
     shuffle_signed: float
     shuffle_magnitude: float
+    normalized_shuffle: float
     lines: tuple[RadiationLine, ...]
 
     @property

@@ -42,11 +42,13 @@ def test_f2_rows_keep_display_and_canonical_structure_coordinates() -> None:
     assert [row["y"] for row in rows] == pytest.approx([0.214, 0.25, 0.286])
     assert [row["shuffle_signed"] for row in rows] == pytest.approx([-0.072, 0.0, 0.072])
     assert [row["shuffle_magnitude"] for row in rows] == pytest.approx([0.072, 0.0, 0.072])
+    assert [row["normalized_shuffle"] for row in rows] == pytest.approx([0.144, 0.0, 0.144])
     assert [row["branch"] for row in rows] == ["lower", "reference", "upper"]
     assert [row["hkl"] for row in rows] == ["021"] * 3
     exported = rows_to_csv(rows, F2_EXPORT_FIELDS)
     assert exported.splitlines()[0] == (
-        "axis_value,hkl,F2,axis_code,y,shuffle_signed,shuffle_magnitude,branch"
+        "axis_value,hkl,F2,axis_code,y,shuffle_signed,shuffle_magnitude,"
+        "normalized_shuffle,branch"
     )
     assert ",021," in exported
 
@@ -100,7 +102,8 @@ def test_f2_excel_workbook_preserves_hkl_and_documents_the_model() -> None:
     assert data["B1"] == ("text", "hkl")
     assert data["B2"] == ("text", "021")
     assert data["D2"] == ("text", "signed_shuffle")
-    assert data["H2"] == ("text", "lower")
+    assert data["H2"] == ("number", "0.144")
+    assert data["I2"] == ("text", "lower")
 
     columns = xlsx_sheet_cells(workbook, "Columns")
     metadata = {
@@ -163,6 +166,7 @@ def test_structure_context_caption_keeps_physical_plot_axis_explicit() -> None:
     assert "当前结构：y=0.214000" in caption
     assert "有符号 shuffle=-0.072000" in caption
     assert "shuffle 幅度=0.072000" in caption
+    assert "归一化 shuffle=0.1440" in caption
     assert "下分支" in caption
     assert "物理横轴仍为 2θ、q 或 d" in caption
 

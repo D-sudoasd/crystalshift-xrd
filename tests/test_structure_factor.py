@@ -8,6 +8,7 @@ from orthoxrd.structure_factor import (
     analytic_unit_structure_factor_squared,
     cmcm_4c_structure_factor,
     cmcm_4c_structure_factor_squared,
+    normalized_shuffle_from_y,
     signed_shuffle_from_y,
     validate_y,
     y_from_shuffle_magnitude,
@@ -70,6 +71,14 @@ def test_signed_shuffle_uses_crystallographic_y_convention() -> None:
     assert signed_shuffle_from_y(0.5) == pytest.approx(0.5)
     assert signed_shuffle_from_y(0.214) == pytest.approx(-0.072)
     assert abs(signed_shuffle_from_y(0.214)) == pytest.approx(0.072)
+
+
+def test_normalized_shuffle_from_y_endpoints_and_ti_nb_example() -> None:
+    assert normalized_shuffle_from_y(0.25) == pytest.approx(0.0)
+    assert normalized_shuffle_from_y(0.0) == pytest.approx(1.0)
+    assert normalized_shuffle_from_y(0.5) == pytest.approx(1.0)
+    assert normalized_shuffle_from_y(0.214) == pytest.approx(0.072 / 0.5)
+    assert normalized_shuffle_from_y(0.214) == pytest.approx(0.144)
 
 
 def test_validate_y_accepts_crystallographic_bounds() -> None:

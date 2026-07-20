@@ -9,6 +9,7 @@ from orthoxrd.structure_coordinates import (
     structure_branch_from_y,
     structure_coordinate_from_y,
 )
+from orthoxrd.structure_factor import normalized_shuffle_from_y
 
 OBSERVATION_EXPORT_FIELDS: Final[tuple[str, ...]] = (
     "row",
@@ -33,6 +34,7 @@ GRID_SCAN_FIELDS: Final[tuple[str, ...]] = (
     "chi2",
     "shuffle_signed",
     "shuffle_magnitude",
+    "normalized_shuffle",
     "branch",
 )
 REFINE_TRACE_FIELDS: Final[tuple[str, ...]] = (
@@ -42,6 +44,7 @@ REFINE_TRACE_FIELDS: Final[tuple[str, ...]] = (
     "chi2",
     "shuffle_signed",
     "shuffle_magnitude",
+    "normalized_shuffle",
     "branch",
 )
 BEST_POINT_FIELDS: Final[tuple[str, ...]] = (
@@ -50,6 +53,7 @@ BEST_POINT_FIELDS: Final[tuple[str, ...]] = (
     "chi2",
     "shuffle_signed",
     "shuffle_magnitude",
+    "normalized_shuffle",
     "source",
 )
 RESIDUAL_AT_BEST_FIELDS: Final[tuple[str, ...]] = (
@@ -78,6 +82,7 @@ LOCAL_MINIMA_FIELDS: Final[tuple[str, ...]] = (
     "refine_status",
     "shuffle_signed",
     "shuffle_magnitude",
+    "normalized_shuffle",
     "branch",
 )
 
@@ -133,6 +138,7 @@ def best_point_rows(result: FitResult) -> Iterable[Mapping[str, CsvValue]]:
         "chi2": best.chi2,
         "shuffle_signed": best.shuffle_signed,
         "shuffle_magnitude": best.shuffle_magnitude,
+        "normalized_shuffle": best.normalized_shuffle,
         "source": best.source,
     }
 
@@ -181,5 +187,6 @@ def _structure_coordinate_fields(y: float) -> dict[str, CsvValue]:
     return {
         "shuffle_signed": structure_coordinate_from_y(y, "signed_shuffle"),
         "shuffle_magnitude": structure_coordinate_from_y(y, "shuffle_magnitude"),
+        "normalized_shuffle": normalized_shuffle_from_y(y),
         "branch": branch if branch is not None else "reference",
     }

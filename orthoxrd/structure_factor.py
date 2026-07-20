@@ -21,6 +21,18 @@ def signed_shuffle_from_y(y: float) -> float:
     return 2.0 * (y - 0.25)
 
 
+def normalized_shuffle_from_y(y: float) -> float:
+    """Basal-shuffle progress relative to the crystallographic magnitude bound.
+
+    ``normalized_shuffle = |signed_shuffle| / SHUFFLE_MAGNITUDE_MAX``, range [0, 1].
+    Zero at the zero-shuffle reference (y=0.25); one at the full magnitude bound.
+    """
+    magnitude = abs(signed_shuffle_from_y(y))
+    if SHUFFLE_MAGNITUDE_MAX == 0.0:
+        return 0.0
+    return magnitude / SHUFFLE_MAGNITUDE_MAX
+
+
 def y_from_shuffle_magnitude(shuffle: float, *, upper_branch: bool = False) -> float:
     if (
         not math.isfinite(shuffle)

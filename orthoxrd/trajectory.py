@@ -14,7 +14,11 @@ from orthoxrd.batch_models import (
 from orthoxrd.config import SimulationConfig
 from orthoxrd.models import LatticeParameters, RadiationLine
 from orthoxrd.powder import energy_kev_to_wavelength_a
-from orthoxrd.structure_factor import signed_shuffle_from_y, y_from_shuffle_magnitude
+from orthoxrd.structure_factor import (
+    normalized_shuffle_from_y,
+    signed_shuffle_from_y,
+    y_from_shuffle_magnitude,
+)
 from orthoxrd.trajectory_validation import step_changes_base
 
 _ALLOWED_COLUMNS = {
@@ -188,6 +192,7 @@ def _parse_row(
         y=resolved_y,
         shuffle_signed=signed_shuffle_from_y(resolved_y),
         shuffle_magnitude=abs(signed_shuffle_from_y(resolved_y)),
+        normalized_shuffle=normalized_shuffle_from_y(resolved_y),
         lines=lines,
     )
 

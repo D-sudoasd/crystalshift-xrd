@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Final
 
 CsvValue = str | int | float
-EXPORT_SCHEMA_VERSION: Final[str] = "2.3"
+EXPORT_SCHEMA_VERSION: Final[str] = "2.4"
 
 F2_EVOLUTION_FIELDS: Final[tuple[str, ...]] = (
     "axis_value",
@@ -13,6 +13,7 @@ F2_EVOLUTION_FIELDS: Final[tuple[str, ...]] = (
     "y",
     "shuffle_signed",
     "shuffle_magnitude",
+    "normalized_shuffle",
     "branch",
 )
 
@@ -22,6 +23,7 @@ PEAK_EVOLUTION_FIELDS: Final[tuple[str, ...]] = (
     "y",
     "shuffle_signed",
     "shuffle_magnitude",
+    "normalized_shuffle",
     "a_A",
     "b_A",
     "c_A",
@@ -46,6 +48,7 @@ SPECTRA_LONG_FIELDS: Final[tuple[str, ...]] = (
     "y",
     "shuffle_signed",
     "shuffle_magnitude",
+    "normalized_shuffle",
     "two_theta_deg",
     "intensity_rel_local",
     "intensity_rel_global",
@@ -88,6 +91,7 @@ CURRENT_PEAK_FIELDS: Final[tuple[str, ...]] = (
     "y",
     "shuffle_signed",
     "shuffle_magnitude",
+    "normalized_shuffle",
     "a_A",
     "b_A",
     "c_A",
@@ -165,6 +169,7 @@ SWEEP_STEPS_FIELDS: Final[tuple[str, ...]] = (
     "y",
     "shuffle_signed",
     "shuffle_magnitude",
+    "normalized_shuffle",
     "a_A",
     "b_A",
     "c_A",

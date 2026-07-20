@@ -387,6 +387,7 @@ def _render_summary(result: FitResult) -> None:
             (t("fit.kpi.chi2_star"), f"{best.chi2:.6g}"),
             (t("fit.kpi.shuffle_signed"), f"{best.shuffle_signed:.6f}"),
             (t("fit.kpi.shuffle_mag"), f"{best.shuffle_magnitude:.6f}"),
+            (t("fit.kpi.normalized_shuffle"), f"{best.normalized_shuffle:.4f}"),
             (t("fit.kpi.source"), best.source),
             (t("fit.kpi.peaks"), f"{included}/{len(result.matched)}"),
             (t("fit.kpi.mode"), t(f"fit.mode.{result.options.observable_mode}")),

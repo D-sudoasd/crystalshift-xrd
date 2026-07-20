@@ -64,7 +64,7 @@ def test_live_export_contains_float64_analysis_tables_and_frame_comparison() -> 
         )
         live_state = json.loads(archive.read("live_state.json"))
 
-    assert manifest["schema_version"] == "2.3"
+    assert manifest["schema_version"] == "2.4"
     assert manifest["generated_at_utc"] is None
     assert manifest["deterministic"] is True
     assert manifest["export_kind"] == "live"

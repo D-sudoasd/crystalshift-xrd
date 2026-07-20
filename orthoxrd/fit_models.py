@@ -162,6 +162,7 @@ class BestFit:
     chi2: float
     shuffle_signed: float
     shuffle_magnitude: float
+    normalized_shuffle: float
     source: str
 
 

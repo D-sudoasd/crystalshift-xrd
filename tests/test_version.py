@@ -14,4 +14,4 @@ def test_package_and_export_versions_are_aligned() -> None:
 
     assert __version__ == "2.3.0"
     assert pyproject["project"]["version"] == __version__
-    assert EXPORT_SCHEMA_VERSION == "2.3"
+    assert EXPORT_SCHEMA_VERSION == "2.4"

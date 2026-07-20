@@ -55,7 +55,7 @@ def _result() -> FitResult:
             RefineTracePoint(0.248, 2.08, 1.1, 1),
             RefineTracePoint(0.25, 2.1, 1.0, 2),
         ),
-        best=BestFit(0.25, 2.1, 1.0, 0.0, 0.0, "refine"),
+        best=BestFit(0.25, 2.1, 1.0, 0.0, 0.0, 0.0, "refine"),
         residuals_at_best=(
             ResidualAtBest(0, 2, 1, "line_00", "line", "s1", 10.0, 4.0, 9.0, 1.0, 0.25, True),
             ResidualAtBest(1, 1, 0, "line_00", "line", "s2", 8.0, 4.0, 8.5, -0.5, 3.0, True),

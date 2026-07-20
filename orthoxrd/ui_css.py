@@ -138,7 +138,7 @@ button:disabled,
 }
 .xrd-summary-grid {
   display: grid;
-  grid-template-columns: repeat(8, minmax(92px, 1fr));
+  grid-template-columns: repeat(9, minmax(92px, 1fr));
   gap: 6px;
   margin: 8px 0 10px;
 }

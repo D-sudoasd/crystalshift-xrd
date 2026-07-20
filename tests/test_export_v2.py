@@ -66,7 +66,7 @@ def test_current_simulation_zip_has_analysis_ready_contract() -> None:
         assert set(archive.namelist()) == set(CURRENT_EXPORT_FILES)
         manifest = json.loads(archive.read("manifest.json"))
         workbook = archive.read("analysis.xlsx")
-        assert manifest["schema_version"] == "2.3"
+        assert manifest["schema_version"] == "2.4"
         assert manifest["generated_at_utc"] is None
         assert manifest["deterministic"] is True
         assert {
@@ -204,7 +204,7 @@ def test_batch_zip_preserves_legacy_headers_and_adds_v2_files() -> None:
 
     assert peak_header[: len(PEAK_EVOLUTION_FIELDS)] == list(PEAK_EVOLUTION_FIELDS)
     assert spectra_header[: len(SPECTRA_LONG_FIELDS)] == list(SPECTRA_LONG_FIELDS)
-    assert manifest["schema_version"] == "2.3"
+    assert manifest["schema_version"] == "2.4"
     assert manifest["generated_at_utc"] is None
     assert manifest["deterministic"] is True
     assert manifest["compatibility"]["legacy_headers_preserved"] is True

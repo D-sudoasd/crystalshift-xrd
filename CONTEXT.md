@@ -14,6 +14,10 @@ _Avoid_: free parameter (unqualified), position parameter
 The basal-plane displacement parameter linked to y by `shuffle_signed = 2(y - 0.25)` and `shuffle_magnitude = |shuffle_signed|`.
 _Avoid_: displacement (unqualified), shuffle without signed/magnitude
 
+**Normalized shuffle**:
+`normalized_shuffle = shuffle_magnitude / SHUFFLE_MAGNITUDE_MAX` (= |2(y−0.25)|/0.5), range [0, 1]. Display/export process metric for basal-shuffle progress from the zero-shuffle reference (0) to the crystallographic magnitude bound (1).
+_Avoid_: order parameter (unqualified thermodynamic claim), intensity normalization
+
 **Shuffle branch**:
 Which of the two y values maps from a given shuffle magnitude: lower `y = 0.25 - s/2` or upper `y = 0.25 + s/2`.
 

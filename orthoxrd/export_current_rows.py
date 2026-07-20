@@ -6,7 +6,7 @@ from collections.abc import Iterator, Mapping
 from orthoxrd.export_schema import CsvValue
 from orthoxrd.powder import wavelength_a_to_energy_kev
 from orthoxrd.simulation import SimulationResult
-from orthoxrd.structure_factor import signed_shuffle_from_y
+from orthoxrd.structure_factor import normalized_shuffle_from_y, signed_shuffle_from_y
 
 
 def current_spectrum_rows(result: SimulationResult) -> Iterator[Mapping[str, CsvValue]]:
@@ -76,6 +76,7 @@ def current_peak_rows(result: SimulationResult) -> Iterator[Mapping[str, CsvValu
             "y": result.config.y,
             "shuffle_signed": shuffle_signed,
             "shuffle_magnitude": abs(shuffle_signed),
+            "normalized_shuffle": normalized_shuffle_from_y(result.config.y),
             "a_A": result.config.lattice.a,
             "b_A": result.config.lattice.b,
             "c_A": result.config.lattice.c,

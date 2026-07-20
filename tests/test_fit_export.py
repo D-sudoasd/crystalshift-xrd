@@ -187,6 +187,7 @@ def test_prepare_fit_export_members_and_key_columns() -> None:
         "chi2",
         "shuffle_signed",
         "shuffle_magnitude",
+        "normalized_shuffle",
         "branch",
     )
     assert REFINE_TRACE_FIELDS == (
@@ -196,6 +197,7 @@ def test_prepare_fit_export_members_and_key_columns() -> None:
         "chi2",
         "shuffle_signed",
         "shuffle_magnitude",
+        "normalized_shuffle",
         "branch",
     )
     assert LOCAL_MINIMA_FIELDS == (
@@ -210,6 +212,7 @@ def test_prepare_fit_export_members_and_key_columns() -> None:
         "refine_status",
         "shuffle_signed",
         "shuffle_magnitude",
+        "normalized_shuffle",
         "branch",
     )
 
@@ -232,28 +235,39 @@ def test_prepare_fit_export_members_and_key_columns() -> None:
         "chi2",
         "shuffle_signed",
         "shuffle_magnitude",
+        "normalized_shuffle",
         "branch",
     } <= set(grid[0])
     assert float(grid[0]["y"]) == 0.0
     assert float(grid[0]["shuffle_signed"]) == -0.5
     assert float(grid[0]["shuffle_magnitude"]) == 0.5
+    assert float(grid[0]["normalized_shuffle"]) == 1.0
     assert grid[0]["branch"] == "lower"
     assert float(grid[25]["y"]) == 0.25
     assert float(grid[25]["shuffle_signed"]) == 0.0
     assert float(grid[25]["shuffle_magnitude"]) == 0.0
+    assert float(grid[25]["normalized_shuffle"]) == 0.0
     assert grid[25]["branch"] == "reference"
     assert float(grid[-1]["y"]) == 0.5
     assert float(grid[-1]["shuffle_signed"]) == 0.5
     assert float(grid[-1]["shuffle_magnitude"]) == 0.5
+    assert float(grid[-1]["normalized_shuffle"]) == 1.0
     assert grid[-1]["branch"] == "upper"
     assert refine
-    assert {"shuffle_signed", "shuffle_magnitude", "branch"} <= set(refine[0])
+    assert {
+        "shuffle_signed",
+        "shuffle_magnitude",
+        "normalized_shuffle",
+        "branch",
+    } <= set(refine[0])
     for process_rows in (grid, refine, minima):
         for row in process_rows:
             y_value = float(row["y"])
             signed = float(row["shuffle_signed"])
+            magnitude = float(row["shuffle_magnitude"])
             assert signed == pytest.approx(2.0 * (y_value - 0.25))
-            assert float(row["shuffle_magnitude"]) == pytest.approx(abs(signed))
+            assert magnitude == pytest.approx(abs(signed))
+            assert float(row["normalized_shuffle"]) == pytest.approx(magnitude / 0.5)
             expected_branch = (
                 "lower" if y_value < 0.25 else "upper" if y_value > 0.25 else "reference"
             )
@@ -284,7 +298,7 @@ def test_prepare_fit_export_members_and_key_columns() -> None:
     assert "resolved_weight" in readme.lower() or "resolved weight" in readme.lower()
 
     assert manifest["export_kind"] == "fit"
-    assert manifest["schema_version"] == "2.3"
+    assert manifest["schema_version"] == "2.4"
     assert manifest["generated_at_utc"] is None
     assert manifest["deterministic"] is True
     assert manifest["config_hash"] == fit_export_hash(result)
@@ -315,11 +329,13 @@ def test_prepare_fit_export_members_and_key_columns() -> None:
     assert grid_cells["A1"] == ("text", "y")
     assert grid_cells["D1"] == ("text", "shuffle_signed")
     assert grid_cells["E1"] == ("text", "shuffle_magnitude")
-    assert grid_cells["F1"] == ("text", "branch")
+    assert grid_cells["F1"] == ("text", "normalized_shuffle")
+    assert grid_cells["G1"] == ("text", "branch")
     assert grid_cells["D2"] == ("number", "-0.5")
     assert grid_cells["E2"] == ("number", "0.5")
-    assert grid_cells["F2"] == ("text", "lower")
-    assert grid_cells["F27"] == ("text", "reference")
+    assert grid_cells["F2"] == ("number", "1")
+    assert grid_cells["G2"] == ("text", "lower")
+    assert grid_cells["G27"] == ("text", "reference")
 
     column_cells = xlsx_sheet_cells(workbook, "Columns")
     metadata_rows = {
@@ -341,6 +357,11 @@ def test_prepare_fit_export_members_and_key_columns() -> None:
             "number",
             "fractional",
             "Basal-shuffle magnitude, abs(shuffle_signed).",
+        )
+        assert metadata_rows[(sheet_name, "normalized_shuffle")] == (
+            "number",
+            "1",
+            "Normalized basal-shuffle magnitude |s|/0.5, range [0,1].",
         )
         assert metadata_rows[(sheet_name, "branch")] == (
             "text",

@@ -27,6 +27,7 @@ from orthoxrd.powder import (
 )
 from orthoxrd.structure_factor import (
     cmcm_4c_structure_factor,
+    normalized_shuffle_from_y,
     signed_shuffle_from_y,
     validate_y,
 )
@@ -212,12 +213,14 @@ def run_discrete_peak_fit(
     local_minima = refined_local_minima[: options.max_local_minima]
 
     shuffle = signed_shuffle_from_y(best_y)
+    magnitude = abs(shuffle)
     best = BestFit(
         y=best_y,
         scale_s=best_s,
         chi2=best_chi2,
         shuffle_signed=shuffle,
-        shuffle_magnitude=abs(shuffle),
+        shuffle_magnitude=magnitude,
+        normalized_shuffle=normalized_shuffle_from_y(best_y),
         source=source,
     )
     identifiability = _profile_identifiability(

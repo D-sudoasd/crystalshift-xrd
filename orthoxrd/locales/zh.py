@@ -21,7 +21,7 @@ ZH_TEXT: dict[str, str] = {
     "common.off": "关",
     # App shell
     "app.page_title": "CrystalShift XRD",
-    "app.model_tag": "Cmcm 4c | schema 2.3",
+    "app.model_tag": "Cmcm 4c | schema 2.4",
     "app.subtitle": "面向晶格、Wyckoff-y、基面 shuffle 与入射辐射的运动学粉末 XRD 理论模型。",
     "app.spinner": "正在计算当前理论模型…",
     "app.summary.a": "a (Å)",
@@ -29,6 +29,7 @@ ZH_TEXT: dict[str, str] = {
     "app.summary.c": "c (Å)",
     "app.summary.y": "Wyckoff y",
     "app.summary.shuffle": "shuffle |s|",
+    "app.summary.normalized_shuffle": "归一化 shuffle",
     "app.summary.energy": "能量 (keV)",
     "app.summary.lambda": "波长 λ (Å)",
     "app.summary.hash": "配置哈希",
@@ -92,12 +93,15 @@ ZH_TEXT: dict[str, str] = {
     "structure.branch": "shuffle 幅度分支",
     "structure.signed_label": "有符号 shuffle",
     "structure.signed_meta": "2(y − 0.25) · 当前{branch}",
+    "structure.normalized_label": "归一化 shuffle",
+    "structure.normalized_meta": "|s| / 0.5 · 范围 [0, 1]",
     "structure.branch.lower": "下分支",
     "structure.branch.upper": "上分支",
     "structure.branch.reference": "零-shuffle 参考点",
     "structure.relation_note": (
         "<div class=\"xrd-note\"><strong>y / shuffle 关系</strong> "
-        "signed = 2(y − 0.25)；magnitude = abs(signed)。"
+        "signed = 2(y − 0.25)；magnitude = abs(signed)；"
+        "normalized = magnitude / 0.5。"
         "Ti-Nb 下分支：y={y_min:.3f}..{y_max:.3f}，"
         "magnitude=0..{s_max:.3f}。</div>"
     ),
@@ -105,6 +109,9 @@ ZH_TEXT: dict[str, str] = {
     "structure.range_y": "Wyckoff y 有效范围：{ymin:.3f} 至 {ymax:.3f}",
     "structure.range_signed": "shuffle_signed = 2(y − 0.25)，范围：{smin:.3f} 至 {smax:+.3f}",
     "structure.range_mag": "shuffle_magnitude = abs(shuffle_signed)，范围：{smin:.3f} 至 {smax:.3f}",
+    "structure.range_normalized": (
+        "normalized_shuffle = shuffle_magnitude / 0.5，范围：0 至 1"
+    ),
     "structure.range_tinb": (
         "默认 Ti-Nb 下分支扫描：y={ymin:.3f}..{ymax:.3f}，"
         "shuffle_magnitude={smin:.3f}..{smax:.3f}"
@@ -115,7 +122,7 @@ ZH_TEXT: dict[str, str] = {
     ),
     "structure.context.caption": (
         "当前结构：y={y:.6f} | 有符号 shuffle={signed:+.6f} | "
-        "shuffle 幅度={magnitude:.6f} | {branch}。"
+        "shuffle 幅度={magnitude:.6f} | 归一化 shuffle={normalized:.4f} | {branch}。"
         "这些坐标调制结构因子与理论强度；谱图/峰表的物理横轴仍为 2θ、q 或 d。"
     ),
     "structure.plot.cell": "Cmcm 晶胞",
@@ -274,7 +281,7 @@ ZH_TEXT: dict[str, str] = {
         "仅在松开滑块时将最终帧写回 Python 主参数。"
     ),
     "live.export.prepare": "准备实时演化 ZIP",
-    "live.export.spinner": "正在构建 schema 2.3 实时分析包…",
+    "live.export.spinner": "正在构建 schema 2.4 实时分析包…",
     "live.export.caption_prepare": "按需生成全精度实时 ZIP。",
     "live.export.caption_changed": "实时选择已变更，请重新准备 ZIP。",
     "live.export.download": "下载 live_evolution.zip",
@@ -321,8 +328,8 @@ ZH_TEXT: dict[str, str] = {
     "sweep.peak_sample_header": "##### 峰演化样例",
     "sweep.preview_caption": "预览最多 500 行峰数据。ZIP 含完整表格。",
     "sweep.prepare": "准备扫描 ZIP",
-    "sweep.spinner": "正在将 schema 2.3 文件写入 ZIP…",
-    "sweep.prepare_caption": "先运行当前配置，再准备 schema 2.3 ZIP。",
+    "sweep.spinner": "正在将 schema 2.4 文件写入 ZIP…",
+    "sweep.prepare_caption": "先运行当前配置，再准备 schema 2.4 ZIP。",
     "sweep.download": "下载扫描 ZIP",
     "sweep.export_size": "{kib:.1f} KiB | SHA-256 {sha}…",
     "sweep.calc_spinner": "正在计算参数扫描…",
@@ -378,7 +385,7 @@ ZH_TEXT: dict[str, str] = {
     # Export current
     "export.prepare": "准备当前结果 ZIP",
     "export.spinner": "正在准备当前模拟导出…",
-    "export.caption": "Schema 2.3 导出按需生成。",
+    "export.caption": "Schema 2.4 导出按需生成。",
     "export.expired": "已准备的导出已失效，请重新准备。",
     "export.download": "下载当前 ZIP",
     "export.size": "{kib:.1f} KiB | SHA-256 {sha}…",
@@ -460,6 +467,7 @@ ZH_TEXT: dict[str, str] = {
     "fit.kpi.chi2_star": "χ²*",
     "fit.kpi.shuffle_signed": "有符号 shuffle",
     "fit.kpi.shuffle_mag": "shuffle |s|",
+    "fit.kpi.normalized_shuffle": "归一化 shuffle",
     "fit.kpi.source": "来源",
     "fit.kpi.peaks": "使用峰数",
     "fit.kpi.mode": "观测量",
@@ -564,6 +572,8 @@ ZH_TEXT: dict[str, str] = {
 **shuffle_signed = 2(y − 0.25)**
 
 **shuffle_magnitude = abs(shuffle_signed)**
+
+**normalized_shuffle = shuffle_magnitude / 0.5**（范围 [0, 1]；仅作进程/进度指标）
 
 改变 y 会改变结构因子，但不改变 d 间距。
 改变 a、b 或 c 会改变 d 间距与布拉格位置。
@@ -883,7 +893,7 @@ ZH_HELP: dict[str, str] = {
         "导出 F² 演化长表。",
         "同时保留所选显示轴与 canonical y，便于后处理作图。",
         "f2_evolution.csv。",
-        "列含 axis_value、hkl、F2、axis_code、y、有符号/幅度 shuffle 与 branch。",
+        "列含 axis_value、hkl、F2、axis_code、y、有符号/幅度/归一化 shuffle 与 branch。",
     ),
     "f2.download_excel": _h(
         "把同一份 F² 演化长表导出为原生 Excel 工作簿。",
@@ -916,7 +926,7 @@ ZH_HELP: dict[str, str] = {
         "确认基线与当前帧后准备 ZIP。",
         "选择变更后需重新准备。",
     ),
-    "live.export.download": _h("下载已准备的 live_evolution.zip。", "离线分析。", "含 live_state.json 等。", "schema 2.3。"),
+    "live.export.download": _h("下载已准备的 live_evolution.zip。", "离线分析。", "含 live_state.json 等。", "schema 2.4。"),
     "sweep.spectrum_points": _h(
         "扫描中每一步谱图采样点数。",
         "控制内存与 ZIP 体积。",
@@ -956,7 +966,7 @@ ZH_HELP: dict[str, str] = {
     "sweep.result_view": _h("在热图、瀑布图、峰演化与数据预览间切换。", "同一结果多视角解读。", "先热图总览再峰演化。", "显示范围裁剪不影响导出全量。"),
     "sweep.peak_metric": _h("峰演化曲线的纵轴度量。", "F²、N·F²、R 与模型强度口径不同。", "实验峰面积后处理可按是否已校正 LP 选择两种 R。", "R 是未归一化理论参考因子，不是仪器绝对标定强度。"),
     "sweep.peak_series": _h("最多选择 12 条峰系列绘制演化。", "跟踪关键 HKL。", "勾选 110/020 等。", "消光峰以 0 保留以不断线。"),
-    "sweep.prepare": _h("生成 schema 2.3 扫描 ZIP。", "完整可复现数据包。", "结果有效且未过期时准备。", "过期结果按钮禁用。"),
+    "sweep.prepare": _h("生成 schema 2.4 扫描 ZIP。", "完整可复现数据包。", "结果有效且未过期时准备。", "过期结果按钮禁用。"),
     "sweep.download": _h("下载已准备的扫描 ZIP。", "Origin/Python 后处理。", "含矩阵与 checksum。", "文件名保持英文。"),
     "sweep.display_range": _h("仅裁剪热图/瀑布图显示窗。", "导出仍为全模拟窗口。", "放大局部 2θ。", "上下限须有序。"),
     "sweep.display_coordinate": _h(
@@ -976,7 +986,7 @@ ZH_HELP: dict[str, str] = {
         "调参满意后点击准备。",
         "配置变更会使旧包失效。",
     ),
-    "export.download": _h("下载 current_simulation.zip。", "存档与制图。", "含 Origin 辅助文件。", "schema 2.3。"),
+    "export.download": _h("下载 current_simulation.zip。", "存档与制图。", "含 Origin 辅助文件。", "schema 2.4。"),
     "fit.obs.upload": _h(
         "上传离散峰观测 CSV。",
         "把实验峰强导入反演拟合。",

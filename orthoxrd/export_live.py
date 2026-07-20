@@ -27,7 +27,7 @@ from orthoxrd.export_writer import (
     write_text_entry,
 )
 from orthoxrd.live import LivePreviewResult, config_for_live_value
-from orthoxrd.structure_factor import signed_shuffle_from_y
+from orthoxrd.structure_factor import normalized_shuffle_from_y, signed_shuffle_from_y
 from orthoxrd.ui_plot_state import PlotState
 
 LIVE_COMPARISON_FIELDS: Final[tuple[str, ...]] = (
@@ -183,6 +183,7 @@ def _live_sweep(result: LivePreviewResult) -> SweepResult:
                 y=frame.y,
                 shuffle_signed=signed,
                 shuffle_magnitude=abs(signed),
+                normalized_shuffle=normalized_shuffle_from_y(frame.y),
                 lines=frame.lines,
             )
         )

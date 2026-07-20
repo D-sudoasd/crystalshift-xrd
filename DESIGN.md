@@ -10,6 +10,7 @@ This is a dense scientific analysis workbench, not a landing page. Its first vie
 - `a`, `b`, `c`, wavelength, and energy control Bragg positions.
 - Wyckoff `y` and basal shuffle control structure factors and model intensities, not d-spacing.
 - `y` is canonical; signed shuffle is one-to-one, while magnitude is two-to-one and must retain a lower/upper branch. `y=0.25` is the zero-shuffle reference in the same Cmcm cell, and the 4c displacement is `±b(y-0.25)` along `b`.
+- `normalized_shuffle = |shuffle_signed| / SHUFFLE_MAGNITUDE_MAX` ∈ [0, 1] is a derived display/export process metric only (not a fit or sweep axis).
 - Peak model intensity is `I_model_peak = F² × applied_multiplicity × applied_LP × applied_volume_factor × line_weight`.
 - `applied_volume_factor = 1 / V_cell` when the cell-volume correction is enabled (otherwise `1`).
 - Reference factors are `R_hkl = N x F2 x LP / V^2` and
@@ -81,12 +82,14 @@ This is a dense scientific analysis workbench, not a landing page. Its first vie
 - Display controls never change peak rows, profile rows, or exported matrices. A reversed d axis keeps matching reversed labels.
 - Structure display-coordinate controls project canonical `y` to signed shuffle or branch-safe magnitude for plots only. Magnitude traces on opposite sides of `y=0.25` are never connected.
 
-## Export Contract 2.3
+## Export Contract 2.4
 
 - Current and Sweep ZIPs add plot_state.json, origin_column_map.csv, origin_import.py, and ORIGIN_README.md without renaming legacy CSV files.
 - Current, Sweep, Live, and Fit packages add `analysis.xlsx` without removing or rewriting CSVs. Every workbook contains README, Parameters, and Columns sheets; HKL labels and stable identifiers use Excel text cells to preserve leading zeroes.
 - CSV is the canonical machine contract. XLSX is a documented human-inspection mirror and is covered by the same ZIP checksum manifest.
 - The analytical F2 view additionally provides a standalone `f2_evolution.xlsx` beside its CSV. Because it is not inside a ZIP, its README and Parameters sheets record the unit-scatterer formula, exclusions, coordinates, branch, and selected HKLs directly rather than referring to a manifest.
+- Structure-bearing process tables export `y`, `shuffle_signed`,
+  `shuffle_magnitude`, and `normalized_shuffle` (= magnitude / 0.5).
 - Current peak rows include geometry, current y/lattice/radiation, F/F2,
   N*F2, N*F2*LP, and both R_hkl conventions. Sweep exports provide matching
   long-form fields and matrices for F2, N_F2, both R factors, model intensity,
